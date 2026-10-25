@@ -12,11 +12,11 @@ export const Navbar: React.FC = () => {
   return (
     <header className="bg-[#181A22] border-b border-[#292C36] sticky top-0 z-50">
       <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
-        {/* Logo / Brand dengan OLEXTY.jpg */}
+        {/* Logo / Brand dengan OLEXTY.png */}
         <Link to="/community" className="flex items-center gap-3">
           <div className="w-9 h-9 rounded-xl overflow-hidden border border-[#8B8CF8]/30 flex items-center justify-center bg-[#14161D]">
             <img 
-              src="/OLEXTY.jpg" 
+              src="/OLEXTY.png" 
               alt="OLEXTY" 
               className="w-full h-full object-cover" 
               onError={(e) => {

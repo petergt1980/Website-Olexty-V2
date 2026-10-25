@@ -2,10 +2,16 @@ import React, { useEffect, useState } from 'react';
 import { collection, onSnapshot, doc, updateDoc, addDoc, deleteDoc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../../../lib/firebase';
 import { UserProfile, UserRole, EventItem, SocialLinks } from '../../../types';
-import { Users, Settings, Calendar, TrendingUp, Plus, Trash2, Shield, Megaphone, Share2, MessageCircle, Video, Youtube, Check, Save, Ban, CheckCircle, Search, Image as ImageIcon } from 'lucide-react';
+import { Users, Settings, Calendar, TrendingUp, Plus, Trash2, Shield, Megaphone, Share2, MessageCircle, Video, Youtube, Check, Save, Ban, CheckCircle, Search, Image as ImageIcon, Swords, Link as LinkIcon } from 'lucide-react';
+
+interface BabuItem {
+  id: string;
+  name: string;
+  task: string;
+}
 
 export const AdminMembersPage: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<'stats' | 'members' | 'events' | 'settings'>('stats');
+  const [activeTab, setActiveTab] = useState<'stats' | 'members' | 'events' | 'babu' | 'war' | 'settings'>('stats');
 
   // State Member
   const [members, setMembers] = useState<UserProfile[]>([]);
@@ -22,8 +28,17 @@ export const AdminMembersPage: React.FC = () => {
   const [eventLink, setEventLink] = useState('');
   const [creatingEvent, setCreatingEvent] = useState(false);
 
+  // State List Babu
+  const [babuList, setBabuList] = useState<BabuItem[]>([]);
+  const [babuName, setBabuName] = useState('');
+  const [babuTask, setBabuTask] = useState('');
+
+  // State Rules & GB War
+  const [rulesWar, setRulesWar] = useState('');
+  const [gbWarLink, setGbWarLink] = useState('');
+
   // State Config & Branding
-  const [logoUrl, setLogoUrl] = useState('/OLEXTY.jpg');
+  const [logoUrl, setLogoUrl] = useState('/OLEXTY.png');
   const [siteName, setSiteName] = useState('OLEXTY');
   const [siteSubName, setSiteSubName] = useState('COMMUNITY');
   const [siteTagline, setSiteTagline] = useState('Esports & Gaming Hub');
@@ -35,7 +50,7 @@ export const AdminMembersPage: React.FC = () => {
   const [savingConfig, setSavingConfig] = useState(false);
   const [configSuccess, setConfigSuccess] = useState(false);
 
-  // Fetch Member, Events, & Branding Realtime
+  // Fetch Data Realtime
   useEffect(() => {
     const unsubMembers = onSnapshot(collection(db, 'users'), (snapshot) => {
       const list: UserProfile[] = snapshot.docs.map((d) => ({
@@ -56,8 +71,8 @@ export const AdminMembersPage: React.FC = () => {
     const fetchConfig = async () => {
       const docSnap = await getDoc(doc(db, 'settings', 'communityConfig'));
       if (docSnap.exists()) {
-        const data = docSnap.data() as SocialLinks;
-        setLogoUrl(data.logoUrl || '/OLEXTY.jpg');
+        const data = docSnap.data() as any;
+        setLogoUrl(data.logoUrl || '/OLEXTY.png');
         setSiteName(data.siteName || 'OLEXTY');
         setSiteSubName(data.siteSubName || 'COMMUNITY');
         setSiteTagline(data.siteTagline || 'Esports & Gaming Hub');
@@ -66,6 +81,9 @@ export const AdminMembersPage: React.FC = () => {
         setTiktokUrl(data.tiktokUrl || '');
         setYoutubeUrl(data.youtubeUrl || '');
         setAnnouncementText(data.announcementText || '');
+        setBabuList(data.babuList || []);
+        setRulesWar(data.rulesWar || '');
+        setGbWarLink(data.gbWarLink || '');
       }
     };
     fetchConfig();
@@ -116,6 +134,24 @@ export const AdminMembersPage: React.FC = () => {
     }
   };
 
+  // Handlers Babu
+  const handleAddBabu = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!babuName.trim()) return;
+    const newItem: BabuItem = {
+      id: Date.now().toString(),
+      name: babuName.trim(),
+      task: babuTask.trim() || 'Tugas Umum',
+    };
+    setBabuList([...babuList, newItem]);
+    setBabuName('');
+    setBabuTask('');
+  };
+
+  const handleRemoveBabu = (id: string) => {
+    setBabuList(babuList.filter(item => item.id !== id));
+  };
+
   // Handlers Save Config & Branding
   const handleSaveConfig = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -131,7 +167,10 @@ export const AdminMembersPage: React.FC = () => {
         tiktokUrl: tiktokUrl.trim(),
         youtubeUrl: youtubeUrl.trim(),
         announcementText: announcementText.trim(),
-      });
+        babuList,
+        rulesWar: rulesWar.trim(),
+        gbWarLink: gbWarLink.trim(),
+      }, { merge: true });
       setConfigSuccess(true);
       setTimeout(() => setConfigSuccess(false), 3000);
     } catch (err) {
@@ -156,7 +195,7 @@ export const AdminMembersPage: React.FC = () => {
             <Shield className="w-6 h-6 text-amber-400" /> Control Center (Admin Panel)
           </h1>
           <p className="text-sm text-[#9CA3B4] mt-1">
-            Pusat manajemen anggota, branding website, logo, event, dan media sosial.
+            Pusat manajemen anggota, event, list tugas, rules war, dan branding website.
           </p>
         </div>
       </div>
@@ -166,9 +205,7 @@ export const AdminMembersPage: React.FC = () => {
         <button
           onClick={() => setActiveTab('stats')}
           className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold transition-all ${
-            activeTab === 'stats'
-              ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
-              : 'text-[#9CA3B4] hover:text-[#F4F5F8] hover:bg-[#181A22]'
+            activeTab === 'stats' ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20' : 'text-[#9CA3B4] hover:text-[#F4F5F8] hover:bg-[#181A22]'
           }`}
         >
           <TrendingUp className="w-4 h-4" /> Ringkasan Stats
@@ -177,9 +214,7 @@ export const AdminMembersPage: React.FC = () => {
         <button
           onClick={() => setActiveTab('members')}
           className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold transition-all ${
-            activeTab === 'members'
-              ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
-              : 'text-[#9CA3B4] hover:text-[#F4F5F8] hover:bg-[#181A22]'
+            activeTab === 'members' ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20' : 'text-[#9CA3B4] hover:text-[#F4F5F8] hover:bg-[#181A22]'
           }`}
         >
           <Users className="w-4 h-4" /> Kelola Member ({members.length})
@@ -188,20 +223,34 @@ export const AdminMembersPage: React.FC = () => {
         <button
           onClick={() => setActiveTab('events')}
           className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold transition-all ${
-            activeTab === 'events'
-              ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
-              : 'text-[#9CA3B4] hover:text-[#F4F5F8] hover:bg-[#181A22]'
+            activeTab === 'events' ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20' : 'text-[#9CA3B4] hover:text-[#F4F5F8] hover:bg-[#181A22]'
           }`}
         >
           <Calendar className="w-4 h-4" /> Kelola Scrim & Event ({events.length})
         </button>
 
         <button
+          onClick={() => setActiveTab('babu')}
+          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold transition-all ${
+            activeTab === 'babu' ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20' : 'text-[#9CA3B4] hover:text-[#F4F5F8] hover:bg-[#181A22]'
+          }`}
+        >
+          <Users className="w-4 h-4" /> List Babu ({babuList.length})
+        </button>
+
+        <button
+          onClick={() => setActiveTab('war')}
+          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold transition-all ${
+            activeTab === 'war' ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20' : 'text-[#9CA3B4] hover:text-[#F4F5F8] hover:bg-[#181A22]'
+          }`}
+        >
+          <Swords className="w-4 h-4" /> Rules & GB War
+        </button>
+
+        <button
           onClick={() => setActiveTab('settings')}
           className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold transition-all ${
-            activeTab === 'settings'
-              ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
-              : 'text-[#9CA3B4] hover:text-[#F4F5F8] hover:bg-[#181A22]'
+            activeTab === 'settings' ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20' : 'text-[#9CA3B4] hover:text-[#F4F5F8] hover:bg-[#181A22]'
           }`}
         >
           <Settings className="w-4 h-4" /> Branding & Sosmed
@@ -298,9 +347,7 @@ export const AdminMembersPage: React.FC = () => {
                         <button
                           onClick={() => handleToggleSuspend(m.uid, m.isSuspended)}
                           className={`px-3 py-1 rounded-lg text-xs font-medium transition-colors ${
-                            m.isSuspended
-                              ? 'bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20'
-                              : 'bg-red-500/10 text-red-400 hover:bg-red-500/20'
+                            m.isSuspended ? 'bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20' : 'bg-red-500/10 text-red-400 hover:bg-red-500/20'
                           }`}
                         >
                           {m.isSuspended ? 'Aktifkan' : 'Tangguhkan'}
@@ -322,17 +369,15 @@ export const AdminMembersPage: React.FC = () => {
             <h3 className="font-bold text-sm text-[#F4F5F8] flex items-center gap-2">
               <Plus className="w-4 h-4 text-[#8B8CF8]" /> Tambah Jadwal Scrim / Turnamen
             </h3>
-
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <input
                 type="text"
-                placeholder="Judul Scrim (misal: Scrim Fast Fast FF)"
+                placeholder="Judul Scrim"
                 value={eventTitle}
                 onChange={(e) => setEventTitle(e.target.value)}
                 className="bg-[#14161D] border border-[#292C36] rounded-xl px-3 py-2 text-xs text-[#F4F5F8] focus:outline-none focus:border-[#8B8CF8]"
                 required
               />
-
               <select
                 value={eventType}
                 onChange={(e: any) => setEventType(e.target.value)}
@@ -343,7 +388,6 @@ export const AdminMembersPage: React.FC = () => {
                 <option value="Mabar">Mabar</option>
                 <option value="Latihan">Latihan</option>
               </select>
-
               <input
                 type="text"
                 placeholder="Tanggal (misal: Senin, 27 Okt)"
@@ -352,7 +396,6 @@ export const AdminMembersPage: React.FC = () => {
                 className="bg-[#14161D] border border-[#292C36] rounded-xl px-3 py-2 text-xs text-[#F4F5F8] focus:outline-none focus:border-[#8B8CF8]"
                 required
               />
-
               <input
                 type="text"
                 placeholder="Jam (misal: 20.00)"
@@ -361,7 +404,6 @@ export const AdminMembersPage: React.FC = () => {
                 className="bg-[#14161D] border border-[#292C36] rounded-xl px-3 py-2 text-xs text-[#F4F5F8] focus:outline-none focus:border-[#8B8CF8]"
                 required
               />
-
               <input
                 type="text"
                 placeholder="Slots (misal: 12 Squad)"
@@ -369,7 +411,6 @@ export const AdminMembersPage: React.FC = () => {
                 onChange={(e) => setEventSlots(e.target.value)}
                 className="bg-[#14161D] border border-[#292C36] rounded-xl px-3 py-2 text-xs text-[#F4F5F8] focus:outline-none focus:border-[#8B8CF8]"
               />
-
               <input
                 type="url"
                 placeholder="Link Pendaftaran / WA Group"
@@ -378,33 +419,25 @@ export const AdminMembersPage: React.FC = () => {
                 className="bg-[#14161D] border border-[#292C36] rounded-xl px-3 py-2 text-xs text-[#F4F5F8] focus:outline-none focus:border-[#8B8CF8]"
               />
             </div>
-
             <button
               type="submit"
               disabled={creatingEvent}
               className="bg-[#8B8CF8] hover:bg-[#7879E8] text-white px-4 py-2 rounded-xl text-xs font-semibold flex items-center gap-2 transition-colors disabled:opacity-50"
             >
-              <Plus className="w-4 h-4" />
-              {creatingEvent ? 'Menambahkan...' : 'Tambah Jadwal Event'}
+              <Plus className="w-4 h-4" /> {creatingEvent ? 'Menambahkan...' : 'Tambah Jadwal Event'}
             </button>
           </form>
 
-          {/* List Event */}
           <div className="space-y-3">
             {events.map((evt) => (
               <div key={evt.id} className="bg-[#181A22] border border-[#292C36] rounded-2xl p-4 flex items-center justify-between">
                 <div>
                   <div className="flex items-center gap-2">
-                    <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-[#8B8CF8]/10 text-[#8B8CF8]">
-                      {evt.type}
-                    </span>
+                    <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-[#8B8CF8]/10 text-[#8B8CF8]">{evt.type}</span>
                     <h4 className="font-bold text-sm text-[#F4F5F8]">{evt.title}</h4>
                   </div>
-                  <p className="text-xs text-[#9CA3B4] mt-1">
-                    {evt.date} • {evt.time} WIB | Slot: {evt.slots}
-                  </p>
+                  <p className="text-xs text-[#9CA3B4] mt-1">{evt.date} - {evt.time} WIB | Slot: {evt.slots}</p>
                 </div>
-
                 <button
                   onClick={() => handleDeleteEvent(evt.id)}
                   className="p-2 text-red-400 hover:bg-red-500/10 rounded-xl transition-colors"
@@ -418,15 +451,114 @@ export const AdminMembersPage: React.FC = () => {
         </div>
       )}
 
-      {/* Tab 4: Pengaturan Branding, Logo, & Sosmed */}
+      {/* Tab 4: Kelola List Babu */}
+      {activeTab === 'babu' && (
+        <div className="bg-[#181A22] border border-[#292C36] rounded-2xl p-6 space-y-6">
+          <h3 className="font-bold text-sm text-[#F4F5F8] flex items-center gap-2">
+            <Users className="w-4 h-4 text-[#8B8CF8]" /> Manajemen List Babu / Tugas Harian
+          </h3>
+
+          <form onSubmit={handleAddBabu} className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <input
+              type="text"
+              placeholder="Nama Anggota"
+              value={babuName}
+              onChange={(e) => setBabuName(e.target.value)}
+              className="bg-[#14161D] border border-[#292C36] rounded-xl px-3 py-2 text-xs text-[#F4F5F8] focus:outline-none focus:border-[#8B8CF8]"
+              required
+            />
+            <input
+              type="text"
+              placeholder="Tugas (contoh: Piket Base / GB)"
+              value={babuTask}
+              onChange={(e) => setBabuTask(e.target.value)}
+              className="bg-[#14161D] border border-[#292C36] rounded-xl px-3 py-2 text-xs text-[#F4F5F8] focus:outline-none focus:border-[#8B8CF8]"
+            />
+            <button
+              type="submit"
+              className="bg-[#8B8CF8] hover:bg-[#7879E8] text-white px-4 py-2 rounded-xl text-xs font-semibold flex items-center justify-center gap-2 transition-colors"
+            >
+              <Plus className="w-4 h-4" /> Tambah Babu
+            </button>
+          </form>
+
+          <div className="overflow-x-auto">
+            <table className="w-full text-left border-collapse">
+              <thead>
+                <tr className="border-b border-[#292C36] text-[10px] text-[#9CA3B4] uppercase">
+                  <th className="py-2.5 px-3">Nama</th>
+                  <th className="py-2.5 px-3">Tugas</th>
+                  <th className="py-2.5 px-3 text-right">Aksi</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-[#292C36] text-xs">
+                {babuList.map((item) => (
+                  <tr key={item.id} className="hover:bg-[#14161D]/50 transition-colors">
+                    <td className="py-3 px-3 font-bold text-[#F4F5F8]">{item.name}</td>
+                    <td className="py-3 px-3 text-[#9CA3B4]">{item.task}</td>
+                    <td className="py-3 px-3 text-right">
+                      <button
+                        onClick={() => handleRemoveBabu(item.id)}
+                        className="p-1.5 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 rounded-lg transition-colors"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+                {babuList.length === 0 && (
+                  <tr>
+                    <td colSpan={3} className="text-center py-6 text-xs text-[#9CA3B4]">Belum ada data list babu. Jangan lupa klik "Simpan" di tab Branding setelah mengubah!</td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* Tab 5: Rules & GB War */}
+      {activeTab === 'war' && (
+        <div className="bg-[#181A22] border border-[#292C36] rounded-2xl p-6 space-y-6">
+          <h3 className="font-bold text-sm text-[#F4F5F8] flex items-center gap-2">
+            <Swords className="w-4 h-4 text-amber-400" /> Atur Rules War & Link GB War
+          </h3>
+
+          <div className="space-y-4">
+            <div className="space-y-1">
+              <label className="text-xs text-[#9CA3B4]">Rules War (Aturan & Ketentuan)</label>
+              <textarea
+                rows={5}
+                value={rulesWar}
+                onChange={(e) => setRulesWar(e.target.value)}
+                placeholder="Tulis aturan war di sini..."
+                className="w-full bg-[#14161D] border border-[#292C36] rounded-xl p-3 text-xs text-[#F4F5F8] focus:outline-none focus:border-[#8B8CF8]"
+              />
+            </div>
+
+            <div className="space-y-1">
+              <label className="text-xs text-[#9CA3B4] flex items-center gap-1">
+                <LinkIcon className="w-3.5 h-3.5 text-emerald-400" /> Link GB War (WhatsApp / Discord / Web)
+              </label>
+              <input
+                type="url"
+                value={gbWarLink}
+                onChange={(e) => setGbWarLink(e.target.value)}
+                placeholder="https://chat.whatsapp.com/..."
+                className="w-full bg-[#14161D] border border-[#292C36] rounded-xl px-3 py-2 text-xs text-[#F4F5F8] focus:outline-none focus:border-[#8B8CF8]"
+              />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Tab 6: Pengaturan Branding & Sosmed */}
       {activeTab === 'settings' && (
         <form onSubmit={handleSaveConfig} className="bg-[#181A22] border border-[#292C36] rounded-2xl p-6 space-y-6">
-          {/* Section Branding & Logo */}
           <div className="space-y-4">
             <h3 className="font-bold text-sm text-[#F4F5F8] flex items-center gap-2">
               <ImageIcon className="w-4 h-4 text-[#8B8CF8]" /> Identitas Website & Logo Header
             </h3>
-
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-1">
                 <label className="text-xs text-[#9CA3B4]">URL Gambar Logo Website</label>
@@ -435,40 +567,15 @@ export const AdminMembersPage: React.FC = () => {
                   value={logoUrl}
                   onChange={(e) => setLogoUrl(e.target.value)}
                   className="w-full bg-[#14161D] border border-[#292C36] rounded-xl px-3 py-2 text-xs text-[#F4F5F8] focus:outline-none focus:border-[#8B8CF8]"
-                  placeholder="/OLEXTY.jpg atau link gambar online"
                 />
               </div>
-
               <div className="space-y-1">
-                <label className="text-xs text-[#9CA3B4]">Nama Utama Web (Navbar)</label>
+                <label className="text-xs text-[#9CA3B4]">Nama Utama Web</label>
                 <input
                   type="text"
                   value={siteName}
                   onChange={(e) => setSiteName(e.target.value)}
                   className="w-full bg-[#14161D] border border-[#292C36] rounded-xl px-3 py-2 text-xs text-[#F4F5F8] focus:outline-none focus:border-[#8B8CF8]"
-                  placeholder="OLEXTY"
-                />
-              </div>
-
-              <div className="space-y-1">
-                <label className="text-xs text-[#9CA3B4]">Sub-nama Web (Warna Ungu)</label>
-                <input
-                  type="text"
-                  value={siteSubName}
-                  onChange={(e) => setSiteSubName(e.target.value)}
-                  className="w-full bg-[#14161D] border border-[#292C36] rounded-xl px-3 py-2 text-xs text-[#F4F5F8] focus:outline-none focus:border-[#8B8CF8]"
-                  placeholder="COMMUNITY"
-                />
-              </div>
-
-              <div className="space-y-1">
-                <label className="text-xs text-[#9CA3B4]">Tagline / Sub-judul Header</label>
-                <input
-                  type="text"
-                  value={siteTagline}
-                  onChange={(e) => setSiteTagline(e.target.value)}
-                  className="w-full bg-[#14161D] border border-[#292C36] rounded-xl px-3 py-2 text-xs text-[#F4F5F8] focus:outline-none focus:border-[#8B8CF8]"
-                  placeholder="Esports & Gaming Hub"
                 />
               </div>
             </div>
@@ -476,73 +583,31 @@ export const AdminMembersPage: React.FC = () => {
 
           <div className="border-t border-[#292C36] pt-4 space-y-4">
             <h3 className="font-bold text-sm text-[#F4F5F8] flex items-center gap-2">
-              <Megaphone className="w-4 h-4 text-[#8B8CF8]" /> Announcement & Link Media Sosial
+              <Megaphone className="w-4 h-4 text-[#8B8CF8]" /> Pengumuman & Sosmed
             </h3>
-
             <div className="space-y-3">
-              <div className="space-y-1">
-                <label className="text-xs text-[#9CA3B4]">Text Announcement</label>
-                <textarea
-                  rows={2}
-                  value={announcementText}
-                  onChange={(e) => setAnnouncementText(e.target.value)}
-                  className="w-full bg-[#14161D] border border-[#292C36] rounded-xl px-3 py-2 text-xs text-[#F4F5F8] focus:outline-none focus:border-[#8B8CF8]"
-                  placeholder="Tulis pengumuman penting di sini..."
-                />
-              </div>
-
+              <textarea
+                rows={2}
+                value={announcementText}
+                onChange={(e) => setAnnouncementText(e.target.value)}
+                placeholder="Tulis pengumuman..."
+                className="w-full bg-[#14161D] border border-[#292C36] rounded-xl px-3 py-2 text-xs text-[#F4F5F8] focus:outline-none focus:border-[#8B8CF8]"
+              />
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div className="space-y-1">
-                  <label className="text-xs text-[#9CA3B4] flex items-center gap-1">
-                    <Share2 className="w-3.5 h-3.5 text-[#5865F2]" /> Link Discord
-                  </label>
-                  <input
-                    type="url"
-                    value={discordUrl}
-                    onChange={(e) => setDiscordUrl(e.target.value)}
-                    className="w-full bg-[#14161D] border border-[#292C36] rounded-xl px-3 py-2 text-xs text-[#F4F5F8] focus:outline-none focus:border-[#8B8CF8]"
-                    placeholder="https://discord.gg/..."
-                  />
-                </div>
-
-                <div className="space-y-1">
-                  <label className="text-xs text-[#9CA3B4] flex items-center gap-1">
-                    <MessageCircle className="w-3.5 h-3.5 text-emerald-400" /> Link Saluran WhatsApp
-                  </label>
-                  <input
-                    type="url"
-                    value={waChannelUrl}
-                    onChange={(e) => setWaChannelUrl(e.target.value)}
-                    className="w-full bg-[#14161D] border border-[#292C36] rounded-xl px-3 py-2 text-xs text-[#F4F5F8] focus:outline-none focus:border-[#8B8CF8]"
-                    placeholder="https://whatsapp.com/channel/..."
-                  />
-                </div>
-
-                <div className="space-y-1">
-                  <label className="text-xs text-[#9CA3B4] flex items-center gap-1">
-                    <Video className="w-3.5 h-3.5 text-pink-400" /> Link TikTok
-                  </label>
-                  <input
-                    type="url"
-                    value={tiktokUrl}
-                    onChange={(e) => setTiktokUrl(e.target.value)}
-                    className="w-full bg-[#14161D] border border-[#292C36] rounded-xl px-3 py-2 text-xs text-[#F4F5F8] focus:outline-none focus:border-[#8B8CF8]"
-                    placeholder="https://tiktok.com/@..."
-                  />
-                </div>
-
-                <div className="space-y-1">
-                  <label className="text-xs text-[#9CA3B4] flex items-center gap-1">
-                    <Youtube className="w-3.5 h-3.5 text-red-400" /> Link YouTube
-                  </label>
-                  <input
-                    type="url"
-                    value={youtubeUrl}
-                    onChange={(e) => setYoutubeUrl(e.target.value)}
-                    className="w-full bg-[#14161D] border border-[#292C36] rounded-xl px-3 py-2 text-xs text-[#F4F5F8] focus:outline-none focus:border-[#8B8CF8]"
-                    placeholder="https://youtube.com/@..."
-                  />
-                </div>
+                <input
+                  type="url"
+                  value={discordUrl}
+                  onChange={(e) => setDiscordUrl(e.target.value)}
+                  placeholder="Link Discord"
+                  className="w-full bg-[#14161D] border border-[#292C36] rounded-xl px-3 py-2 text-xs text-[#F4F5F8] focus:outline-none focus:border-[#8B8CF8]"
+                />
+                <input
+                  type="url"
+                  value={waChannelUrl}
+                  onChange={(e) => setWaChannelUrl(e.target.value)}
+                  placeholder="Link WA Channel"
+                  className="w-full bg-[#14161D] border border-[#292C36] rounded-xl px-3 py-2 text-xs text-[#F4F5F8] focus:outline-none focus:border-[#8B8CF8]"
+                />
               </div>
             </div>
           </div>
@@ -550,19 +615,15 @@ export const AdminMembersPage: React.FC = () => {
           <div className="flex items-center justify-between pt-2">
             {configSuccess ? (
               <span className="text-xs text-emerald-400 flex items-center gap-1 font-semibold">
-                <Check className="w-4 h-4" /> Branding & Pengaturan Berhasil Disimpan!
+                <Check className="w-4 h-4" /> Perubahan Berhasil Disimpan!
               </span>
-            ) : (
-              <span />
-            )}
-
+            ) : <span />}
             <button
               type="submit"
               disabled={savingConfig}
               className="bg-amber-500 hover:bg-amber-600 text-black px-5 py-2.5 rounded-xl text-xs font-bold flex items-center gap-2 transition-colors disabled:opacity-50"
             >
-              <Save className="w-4 h-4" />
-              {savingConfig ? 'Menyimpan...' : 'Simpan Semua Perubahan'}
+              <Save className="w-4 h-4" /> {savingConfig ? 'Menyimpan...' : 'Simpan Semua Perubahan'}
             </button>
           </div>
         </form>

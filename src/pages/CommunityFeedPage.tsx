@@ -1,9 +1,9 @@
 import React, { useEffect, useState } from 'react';
-import { collection, onSnapshot, addDoc, serverTimestamp, query, orderBy } from 'firebase/firestore';
+import { collection, onSnapshot, addDoc, serverTimestamp, query, orderBy, doc, getDoc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { useAuth } from '../features/auth/AuthContext';
 import { Post } from '../types';
-import { MessageSquare, Sparkles, Send, Image as ImageIcon, Flame, Trophy, Users } from 'lucide-react';
+import { MessageSquare, Sparkles, Send, Image as ImageIcon, Flame, Trophy, Users, Megaphone } from 'lucide-react';
 
 export const CommunityFeedPage: React.FC = () => {
   const { user, profile } = useAuth();
@@ -11,6 +11,7 @@ export const CommunityFeedPage: React.FC = () => {
   const [content, setContent] = useState('');
   const [category, setCategory] = useState('General');
   const [loading, setLoading] = useState(false);
+  const [announcement, setAnnouncement] = useState('');
 
   useEffect(() => {
     const q = query(collection(db, 'posts'), orderBy('createdAt', 'desc'));
@@ -21,6 +22,23 @@ export const CommunityFeedPage: React.FC = () => {
       }));
       setPosts(list);
     });
+
+    // Ambil pengumuman dari config admin
+    const fetchAnnouncement = async () => {
+      try {
+        const docSnap = await getDoc(doc(db, 'settings', 'communityConfig'));
+        if (docSnap.exists()) {
+          const data = docSnap.data();
+          if (data.announcementText) {
+            setAnnouncement(data.announcementText);
+          }
+        }
+      } catch (err) {
+        console.error('Gagal memuat pengumuman:', err);
+      }
+    };
+    fetchAnnouncement();
+
     return () => unsubscribe();
   }, []);
 
@@ -49,6 +67,19 @@ export const CommunityFeedPage: React.FC = () => {
 
   return (
     <div className="space-y-6 pb-12">
+      {/* --- BANNER PENGUMUMAN DARI ADMIN (MUNCUL JIKA ADA) --- */}
+      {announcement && (
+        <div className="bg-gradient-to-r from-amber-500/10 via-amber-500/5 to-transparent border border-amber-500/30 rounded-2xl p-4 sm:p-5 flex items-start gap-3 shadow-lg">
+          <div className="p-2 bg-amber-500/20 text-amber-400 rounded-xl shrink-0 mt-0.5">
+            <Megaphone className="w-5 h-5 animate-bounce" />
+          </div>
+          <div className="space-y-1">
+            <h4 className="font-bold text-xs text-amber-400 uppercase tracking-wider">Pengumuman Resmi Admin</h4>
+            <p className="text-xs sm:text-sm text-[#F4F5F8] leading-relaxed whitespace-pre-wrap">{announcement}</p>
+          </div>
+        </div>
+      )}
+
       {/* --- BANNER HEADER UTAMA (Gaya Esports / Gaming Community) --- */}
       <div className="relative rounded-2xl overflow-hidden bg-gradient-to-r from-[#181A22] via-[#202330] to-[#181A22] border border-[#292C36] p-6 sm:p-8 shadow-xl">
         <div className="absolute top-0 right-0 w-96 h-96 bg-[#8B8CF8]/10 rounded-full blur-3xl pointer-events-none"></div>
