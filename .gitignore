@@ -1,0 +1,11 @@
+node_modules
+dist
+dist-ssr
+*.Local
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+.vscode/*
+.DS_Store
