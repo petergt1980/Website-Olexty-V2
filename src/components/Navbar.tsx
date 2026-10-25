@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { MessageSquare, Video, Users, Calendar, Trophy, Shield, Bell, Settings, User } from 'lucide-react';
+import { MessageSquare, Video, Users, Calendar, Trophy, Shield, Bell, MessageCircle, User } from 'lucide-react';
 import { useAuth } from '../features/auth/AuthContext';
 
 export const Navbar: React.FC = () => {
@@ -24,7 +24,7 @@ export const Navbar: React.FC = () => {
         </Link>
 
         {/* Menu Navigasi Utama */}
-        <nav className="hidden md:flex items-center gap-1">
+        <nav className="hidden lg:flex items-center gap-1">
           <Link
             to="/community"
             className={`px-3 py-2 rounded-xl text-xs font-semibold flex items-center gap-2 transition-colors ${
@@ -57,6 +57,14 @@ export const Navbar: React.FC = () => {
           >
             <Calendar className="w-4 h-4" /> Events
           </Link>
+          <Link
+            to="/leaderboard"
+            className={`px-3 py-2 rounded-xl text-xs font-semibold flex items-center gap-2 transition-colors ${
+              isActive('/leaderboard') ? 'bg-[#8B8CF8]/10 text-[#8B8CF8]' : 'text-[#9CA3B4] hover:text-[#F4F5F8]'
+            }`}
+          >
+            <Trophy className="w-4 h-4" /> Leaderboard
+          </Link>
         </nav>
 
         {/* User Actions & Admin Panel */}
@@ -73,14 +81,26 @@ export const Navbar: React.FC = () => {
           {user ? (
             <div className="flex items-center gap-2">
               <Link
+                to="/messages"
+                className={`p-2 rounded-xl bg-[#14161D] border border-[#292C36] ${
+                  isActive('/messages') ? 'text-[#8B8CF8] border-[#8B8CF8]/30' : 'text-[#9CA3B4] hover:text-[#F4F5F8]'
+                }`}
+                title="Pesan"
+              >
+                <MessageCircle className="w-4 h-4" />
+              </Link>
+              <Link
                 to="/notifications"
-                className="p-2 rounded-xl bg-[#14161D] border border-[#292C36] text-[#9CA3B4] hover:text-[#F4F5F8]"
+                className={`p-2 rounded-xl bg-[#14161D] border border-[#292C36] ${
+                  isActive('/notifications') ? 'text-[#8B8CF8] border-[#8B8CF8]/30' : 'text-[#9CA3B4] hover:text-[#F4F5F8]'
+                }`}
+                title="Notifikasi"
               >
                 <Bell className="w-4 h-4" />
               </Link>
               <Link
                 to={`/user/${user.uid}`}
-                className="flex items-center gap-2 bg-[#14161D] border border-[#292C36] px-3 py-1.5 rounded-xl text-xs font-semibold text-[#F4F5F8]"
+                className="flex items-center gap-2 bg-[#14161D] border border-[#292C36] px-3 py-1.5 rounded-xl text-xs font-semibold text-[#F4F5F8] hover:border-[#8B8CF8]/50 transition-colors"
               >
                 <div className="w-6 h-6 rounded-full bg-[#8B8CF8]/20 flex items-center justify-center text-[#8B8CF8] font-bold text-[10px] overflow-hidden">
                   {profile?.avatarUrl ? (
