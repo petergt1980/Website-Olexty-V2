@@ -25,6 +25,7 @@ export const AppRouter: React.FC = () => {
       <Route path="/" element={<Navigate to="/community" replace />} />
       <Route path="/community" element={<CommunityFeedPage />} />
       <Route path="/members" element={<MembersPage />} />
+      <Route path="/clips" element={<ClipShowcasePage />} />
       <Route path="/roster" element={<RosterPage />} />
       <Route path="/events" element={<EventsPage />} />
       <Route path="/leaderboard" element={<LeaderboardPage />} />
