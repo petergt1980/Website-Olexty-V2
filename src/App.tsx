@@ -6,6 +6,11 @@ import { Footer } from './components/Footer';
 
 // Pages
 import { CommunityFeedPage } from './pages/CommunityFeedPage';
+import { MembersPage } from './pages/MembersPage';
+import { ClipShowcasePage } from './pages/ClipShowcasePage';
+import { EventsPage } from './pages/EventsPage';
+import { LeaderboardPage } from './pages/LeaderboardPage';
+import { RosterPage } from './pages/RosterPage';
 import { LoginPage } from './pages/LoginPage';
 import { RegisterPage } from './pages/RegisterPage';
 import { SettingsPage } from './pages/SettingsPage';
@@ -26,6 +31,11 @@ export function App() {
               {/* Public & Core Routes */}
               <Route path="/" element={<Navigate to="/community" replace />} />
               <Route path="/community" element={<CommunityFeedPage />} />
+              <Route path="/members" element={<MembersPage />} />
+              <Route path="/clips" element={<ClipShowcasePage />} />
+              <Route path="/events" element={<EventsPage />} />
+              <Route path="/leaderboard" element={<LeaderboardPage />} />
+              <Route path="/roster" element={<RosterPage />} />
               <Route path="/login" element={<LoginPage />} />
               <Route path="/register" element={<RegisterPage />} />
 
