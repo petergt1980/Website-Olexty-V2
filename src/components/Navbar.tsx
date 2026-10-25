@@ -12,10 +12,18 @@ export const Navbar: React.FC = () => {
   return (
     <header className="bg-[#181A22] border-b border-[#292C36] sticky top-0 z-50">
       <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
-        {/* Logo / Brand */}
+        {/* Logo / Brand dengan OLEXTY.jpg */}
         <Link to="/community" className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-xl bg-[#8B8CF8]/20 border border-[#8B8CF8]/30 flex items-center justify-center font-black text-[#8B8CF8] text-sm">
-            OX
+          <div className="w-9 h-9 rounded-xl overflow-hidden border border-[#8B8CF8]/30 flex items-center justify-center bg-[#14161D]">
+            <img 
+              src="/OLEXTY.jpg" 
+              alt="OLEXTY" 
+              className="w-full h-full object-cover" 
+              onError={(e) => {
+                // Fallback jika gambar gagal dimuat
+                e.currentTarget.style.display = 'none';
+              }} 
+            />
           </div>
           <div>
             <span className="font-bold text-sm text-[#F4F5F8] tracking-wide block">OLEXTY COMMUNITY</span>
@@ -99,7 +107,7 @@ export const Navbar: React.FC = () => {
                 <Bell className="w-4 h-4" />
               </Link>
               
-              {/* Tombol Settings Jelas */}
+              {/* Tombol Settings */}
               <Link
                 to="/settings"
                 className="bg-[#8B8CF8]/10 hover:bg-[#8B8CF8]/20 text-[#8B8CF8] border border-[#8B8CF8]/20 px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-colors"
