@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { MessageSquare, Video, Users, Calendar, Trophy, Shield, Bell, MessageCircle, User } from 'lucide-react';
+import { MessageSquare, Video, Users, Calendar, Trophy, Shield, Bell, MessageCircle, Settings, User } from 'lucide-react';
 import { useAuth } from '../features/auth/AuthContext';
 
 export const Navbar: React.FC = () => {
@@ -67,7 +67,7 @@ export const Navbar: React.FC = () => {
           </Link>
         </nav>
 
-        {/* User Actions & Admin Panel */}
+        {/* User Actions & Settings */}
         <div className="flex items-center gap-3">
           {profile?.role === 'admin' && (
             <Link
@@ -97,6 +97,16 @@ export const Navbar: React.FC = () => {
                 title="Notifikasi"
               >
                 <Bell className="w-4 h-4" />
+              </Link>
+              {/* Tombol ke Halaman Settings */}
+              <Link
+                to="/settings"
+                className={`p-2 rounded-xl bg-[#14161D] border border-[#292C36] ${
+                  isActive('/settings') ? 'text-[#8B8CF8] border-[#8B8CF8]/30' : 'text-[#9CA3B4] hover:text-[#F4F5F8]'
+                }`}
+                title="Pengaturan Akun"
+              >
+                <Settings className="w-4 h-4" />
               </Link>
               <Link
                 to={`/user/${user.uid}`}
