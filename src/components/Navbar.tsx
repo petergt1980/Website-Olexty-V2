@@ -1,182 +1,104 @@
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
+import { MessageSquare, Video, Users, Calendar, Trophy, Shield, Bell, Settings, User } from 'lucide-react';
 import { useAuth } from '../features/auth/AuthContext';
-import { doc, onSnapshot } from 'firebase/firestore';
-import { db } from '../lib/firebase';
-import { SocialLinks } from '../types';
-import { Shield, Home, Users, Video, MessageSquare, Bell, LogOut } from 'lucide-react';
 
 export const Navbar: React.FC = () => {
-  const { user, profile, logout } = useAuth();
   const location = useLocation();
-  const [config, setConfig] = useState<SocialLinks>({});
+  const { user, profile } = useAuth();
 
-  const isAdmin = profile?.role === 'admin' || profile?.role === 'moderator';
   const isActive = (path: string) => location.pathname === path;
-
-  useEffect(() => {
-    const unsubscribe = onSnapshot(doc(db, 'settings', 'communityConfig'), (docSnap) => {
-      if (docSnap.exists()) {
-        setConfig(docSnap.data() as SocialLinks);
-      }
-    });
-    return () => unsubscribe();
-  }, []);
-
-  const logoSrc = config.logoUrl || '/OLEXTY.jpg';
-  const siteName = config.siteName || 'OLEXTY';
-  const siteSubName = config.siteSubName || 'COMMUNITY';
-  const siteTagline = config.siteTagline || 'Esports & Gaming Hub';
 
   return (
     <header className="bg-[#181A22] border-b border-[#292C36] sticky top-0 z-50">
-      <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
-        {/* Logo Header Dinamis */}
-        <Link to="/community" className="flex items-center gap-3 group">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#8B8CF8] via-[#6366F1] to-[#4F46E5] p-0.5 shadow-lg shadow-[#8B8CF8]/25 group-hover:scale-105 transition-transform overflow-hidden">
-            <div className="w-full h-full bg-[#181A22] rounded-[10px] overflow-hidden flex items-center justify-center">
-              <img
-                src={logoSrc}
-                alt="Website Logo"
-                className="w-full h-full object-cover group-hover:scale-110 transition-transform"
-              />
-            </div>
+      <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
+        {/* Logo / Brand */}
+        <Link to="/community" className="flex items-center gap-3">
+          <div className="w-9 h-9 rounded-xl bg-[#8B8CF8]/20 border border-[#8B8CF8]/30 flex items-center justify-center font-black text-[#8B8CF8] text-sm">
+            OX
           </div>
-          
-          <div className="flex flex-col">
-            <span className="font-extrabold text-base sm:text-lg tracking-wider text-[#F4F5F8] leading-none">
-              {siteName} <span className="text-[#8B8CF8]">{siteSubName}</span>
-            </span>
-            <span className="text-[9px] font-bold text-[#9CA3B4] tracking-widest uppercase mt-0.5">
-              {siteTagline}
-            </span>
+          <div>
+            <span className="font-bold text-sm text-[#F4F5F8] tracking-wide block">OLEXTY COMMUNITY</span>
+            <span className="text-[10px] text-[#9CA3B4] block">CIRCLE NOT MARGA</span>
           </div>
         </Link>
 
-        {/* Navigasi Utama */}
-        <nav className="flex items-center gap-1 sm:gap-2">
+        {/* Menu Navigasi Utama */}
+        <nav className="hidden md:flex items-center gap-1">
           <Link
             to="/community"
-            className={`flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-medium transition-colors ${
-              isActive('/community')
-                ? 'bg-[#8B8CF8]/10 text-[#8B8CF8]'
-                : 'text-[#9CA3B4] hover:text-[#F4F5F8] hover:bg-[#292C36]/50'
+            className={`px-3 py-2 rounded-xl text-xs font-semibold flex items-center gap-2 transition-colors ${
+              isActive('/community') ? 'bg-[#8B8CF8]/10 text-[#8B8CF8]' : 'text-[#9CA3B4] hover:text-[#F4F5F8]'
             }`}
           >
-            <Home className="w-4 h-4" />
-            <span className="hidden sm:inline">Komunitas</span>
+            <MessageSquare className="w-4 h-4" /> Komunitas
           </Link>
-
           <Link
             to="/clips"
-            className={`flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-medium transition-colors ${
-              isActive('/clips')
-                ? 'bg-[#8B8CF8]/10 text-[#8B8CF8]'
-                : 'text-[#9CA3B4] hover:text-[#F4F5F8] hover:bg-[#292C36]/50'
+            className={`px-3 py-2 rounded-xl text-xs font-semibold flex items-center gap-2 transition-colors ${
+              isActive('/clips') ? 'bg-[#8B8CF8]/10 text-[#8B8CF8]' : 'text-[#9CA3B4] hover:text-[#F4F5F8]'
             }`}
           >
-            <Video className="w-4 h-4" />
-            <span className="hidden sm:inline">Clips</span>
+            <Video className="w-4 h-4" /> Clips
           </Link>
-
           <Link
             to="/members"
-            className={`flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-medium transition-colors ${
-              isActive('/members')
-                ? 'bg-[#8B8CF8]/10 text-[#8B8CF8]'
-                : 'text-[#9CA3B4] hover:text-[#F4F5F8] hover:bg-[#292C36]/50'
+            className={`px-3 py-2 rounded-xl text-xs font-semibold flex items-center gap-2 transition-colors ${
+              isActive('/members') ? 'bg-[#8B8CF8]/10 text-[#8B8CF8]' : 'text-[#9CA3B4] hover:text-[#F4F5F8]'
             }`}
           >
-            <Users className="w-4 h-4" />
-            <span className="hidden sm:inline">Anggota</span>
+            <Users className="w-4 h-4" /> Anggota
           </Link>
-
-          {user && (
-            <>
-              <Link
-                to="/messages"
-                className={`flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-medium transition-colors ${
-                  isActive('/messages')
-                    ? 'bg-[#8B8CF8]/10 text-[#8B8CF8]'
-                    : 'text-[#9CA3B4] hover:text-[#F4F5F8] hover:bg-[#292C36]/50'
-                }`}
-              >
-                <MessageSquare className="w-4 h-4" />
-                <span className="hidden sm:inline">Pesan</span>
-              </Link>
-
-              <Link
-                to="/notifications"
-                className={`flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-medium transition-colors ${
-                  isActive('/notifications')
-                    ? 'bg-[#8B8CF8]/10 text-[#8B8CF8]'
-                    : 'text-[#9CA3B4] hover:text-[#F4F5F8] hover:bg-[#292C36]/50'
-                }`}
-              >
-                <Bell className="w-4 h-4" />
-                <span className="hidden sm:inline">Notifikasi</span>
-              </Link>
-            </>
-          )}
-
-          {user && isAdmin && (
-            <Link
-              to="/admin"
-              className={`flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-medium transition-colors ${
-                isActive('/admin') || isActive('/admin/settings')
-                  ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
-                  : 'text-amber-400/80 hover:text-amber-300 hover:bg-amber-500/10'
-              }`}
-            >
-              <Shield className="w-4 h-4 text-amber-400" />
-              <span className="hidden sm:inline font-semibold">Admin Panel</span>
-            </Link>
-          )}
+          <Link
+            to="/events"
+            className={`px-3 py-2 rounded-xl text-xs font-semibold flex items-center gap-2 transition-colors ${
+              isActive('/events') ? 'bg-[#8B8CF8]/10 text-[#8B8CF8]' : 'text-[#9CA3B4] hover:text-[#F4F5F8]'
+            }`}
+          >
+            <Calendar className="w-4 h-4" /> Events
+          </Link>
         </nav>
 
-        {/* Profil / Tombol Masuk */}
+        {/* User Actions & Admin Panel */}
         <div className="flex items-center gap-3">
+          {profile?.role === 'admin' && (
+            <Link
+              to="/admin"
+              className="bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border border-amber-500/20 px-3 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-colors"
+            >
+              <Shield className="w-3.5 h-3.5" /> Admin Panel
+            </Link>
+          )}
+
           {user ? (
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2">
               <Link
-                to="/settings"
-                className="flex items-center gap-2 hover:opacity-80 transition-opacity"
+                to="/notifications"
+                className="p-2 rounded-xl bg-[#14161D] border border-[#292C36] text-[#9CA3B4] hover:text-[#F4F5F8]"
               >
-                <div className="w-8 h-8 rounded-full bg-[#8B8CF8]/20 border border-[#292C36] overflow-hidden flex items-center justify-center text-[#8B8CF8] font-bold text-xs">
+                <Bell className="w-4 h-4" />
+              </Link>
+              <Link
+                to={`/user/${user.uid}`}
+                className="flex items-center gap-2 bg-[#14161D] border border-[#292C36] px-3 py-1.5 rounded-xl text-xs font-semibold text-[#F4F5F8]"
+              >
+                <div className="w-6 h-6 rounded-full bg-[#8B8CF8]/20 flex items-center justify-center text-[#8B8CF8] font-bold text-[10px] overflow-hidden">
                   {profile?.avatarUrl ? (
                     <img src={profile.avatarUrl} alt="" className="w-full h-full object-cover" />
                   ) : (
                     profile?.displayName?.[0] || 'U'
                   )}
                 </div>
-                <span className="text-xs text-[#F4F5F8] font-medium hidden md:inline">
-                  {profile?.displayName}
-                </span>
+                <span>{profile?.displayName || 'Akun'}</span>
               </Link>
-
-              <button
-                onClick={logout}
-                title="Keluar"
-                className="p-2 text-[#9CA3B4] hover:text-red-400 hover:bg-red-500/10 rounded-xl transition-colors"
-              >
-                <LogOut className="w-4 h-4" />
-              </button>
             </div>
           ) : (
-            <div className="flex items-center gap-2">
-              <Link
-                to="/login"
-                className="px-3 py-1.5 text-xs text-[#9CA3B4] hover:text-[#F4F5F8] transition-colors"
-              >
-                Masuk
-              </Link>
-              <Link
-                to="/register"
-                className="px-3 py-1.5 bg-[#8B8CF8] hover:bg-[#7879E8] text-white rounded-xl text-xs font-medium transition-colors"
-              >
-                Daftar
-              </Link>
-            </div>
+            <Link
+              to="/login"
+              className="bg-[#8B8CF8] hover:bg-[#7879E8] text-white px-4 py-2 rounded-xl text-xs font-semibold transition-colors"
+            >
+              Masuk
+            </Link>
           )}
         </div>
       </div>
