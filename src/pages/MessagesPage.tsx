@@ -1,102 +1,90 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { 
-  collection, 
-  addDoc, 
-  query, 
-  where, 
-  orderBy, 
-  onSnapshot, 
-  serverTimestamp, 
-  getDocs 
-} from 'firebase/firestore';
+import React, { useEffect, useState } from 'react';
+import { collection, onSnapshot, addDoc, serverTimestamp, query, where } from 'firebase/firestore';
 import { db } from '../lib/firebase';
-import { useAuth, UserProfile } from '../features/auth/AuthContext';
-import { Send, MessageSquare, Search } from 'lucide-react';
+import { useAuth } from '../features/auth/AuthContext';
+import { UserProfile } from '../types';
+import { Send, MessageSquare, Search, User } from 'lucide-react';
 
-interface Message {
+interface ChatMessage {
   id: string;
   senderId: string;
   receiverId: string;
-  content: string;
+  text: string;
   createdAt: any;
-  conversationId: string;
 }
 
 export const MessagesPage: React.FC = () => {
-  const { user } = useAuth();
-  const [usersList, setUsersList] = useState<UserProfile[]>([]);
+  const { user, profile } = useAuth();
+  const [users, setUsers] = useState<UserProfile[]>([]);
   const [selectedUser, setSelectedUser] = useState<UserProfile | null>(null);
-  const [messages, setMessages] = useState<Message[]>([]);
-  const [newMessage, setNewMessage] = useState('');
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [text, setText] = useState('');
   const [search, setSearch] = useState('');
-  const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  };
-
-  // Mengambil daftar pengguna lain
+  // 1. Load Daftar Pengguna
   useEffect(() => {
-    if (!user) return;
-    const fetchUsers = async () => {
-      try {
-        const querySnapshot = await getDocs(collection(db, 'users'));
-        const users: UserProfile[] = [];
-        querySnapshot.forEach((docSnap) => {
-          const data = docSnap.data() as UserProfile;
-          if (data.uid !== user.uid) {
-            users.push(data);
-          }
-        });
-        setUsersList(users);
-      } catch (err) {
-        console.error('Gagal mengambil daftar pengguna:', err);
-      }
-    };
-    fetchUsers();
+    const unsubscribe = onSnapshot(collection(db, 'users'), (snapshot) => {
+      const list: UserProfile[] = snapshot.docs
+        .map((docSnap) => ({
+          ...(docSnap.data() as UserProfile),
+          uid: docSnap.id,
+        }))
+        .filter((u) => u.uid !== user?.uid);
+      setUsers(list);
+    });
+    return () => unsubscribe();
   }, [user]);
 
-  // Mendengarkan pesan realtime dari Firestore
+  // 2. Load Pesan Realtime Antar Pengguna (Sort Manual di Client-Side)
   useEffect(() => {
     if (!user || !selectedUser) return;
 
-    const conversationId = [user.uid, selectedUser.uid].sort().join('_');
+    // Filter pesan tanpa orderBy biar nggak butuh Composite Index di Firestore
     const q = query(
       collection(db, 'messages'),
-      where('conversationId', '==', conversationId),
-      orderBy('createdAt', 'asc')
+      where('participants', 'array-contains', user.uid)
     );
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
-      const fetchedMessages: Message[] = snapshot.docs.map((docSnap) => ({
-        id: docSnap.id,
-        ...docSnap.data(),
-      })) as Message[];
-      setMessages(fetchedMessages);
-      scrollToBottom();
+      const rawMessages: ChatMessage[] = snapshot.docs
+        .map((docSnap) => ({
+          ...(docSnap.data() as ChatMessage),
+          id: docSnap.id,
+        }))
+        .filter(
+          (m) =>
+            (m.senderId === user.uid && m.receiverId === selectedUser.uid) ||
+            (m.senderId === selectedUser.uid && m.receiverId === user.uid)
+        );
+
+      // Urutkan pesan berdasarkan tanggal kirim secara manual
+      rawMessages.sort((a, b) => {
+        const timeA = a.createdAt?.toDate ? a.createdAt.toDate().getTime() : 0;
+        const timeB = b.createdAt?.toDate ? b.createdAt.toDate().getTime() : 0;
+        return timeA - timeB;
+      });
+
+      setMessages(rawMessages);
     });
 
     return () => unsubscribe();
   }, [user, selectedUser]);
 
-  useEffect(() => {
-    scrollToBottom();
-  }, [messages]);
-
+  // 3. Kirim Pesan
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newMessage.trim() || !user || !selectedUser) return;
+    if (!text.trim() || !user || !selectedUser) return;
 
-    const conversationId = [user.uid, selectedUser.uid].sort().join('_');
-    const text = newMessage;
-    setNewMessage('');
+    const messageText = text.trim();
+    setText('');
 
     try {
       await addDoc(collection(db, 'messages'), {
-        conversationId,
         senderId: user.uid,
+        senderName: profile?.displayName || 'Member',
         receiverId: selectedUser.uid,
-        content: text,
+        participants: [user.uid, selectedUser.uid],
+        text: messageText,
         createdAt: serverTimestamp(),
       });
     } catch (err) {
@@ -104,150 +92,131 @@ export const MessagesPage: React.FC = () => {
     }
   };
 
-  const filteredUsers = usersList.filter(
-    (u) =>
-      u.displayName?.toLowerCase().includes(search.toLowerCase()) ||
-      u.username?.toLowerCase().includes(search.toLowerCase())
+  const filteredUsers = users.filter((u) =>
+    u.displayName?.toLowerCase().includes(search.toLowerCase())
   );
 
-  if (!user) {
-    return (
-      <div className="bg-[#181A22] border border-[#292C36] rounded-2xl p-8 text-center text-sm text-[#9CA3B4]">
-        Silakan masuk terlebih dahulu untuk menggunakan fitur percakapan privat.
-      </div>
-    );
-  }
-
   return (
-    <div className="max-w-6xl mx-auto h-[calc(100vh-140px)] grid grid-cols-1 md:grid-cols-3 bg-[#181A22] border border-[#292C36] rounded-2xl overflow-hidden shadow-2xl">
-      {/* Sidebar - Daftar Pengguna */}
-      <div className="border-r border-[#292C36] flex flex-col h-full bg-[#14161D]">
-        <div className="p-4 border-b border-[#292C36] space-y-3">
-          <h2 className="font-bold text-[#F4F5F8] text-base flex items-center gap-2">
-            <MessageSquare className="w-5 h-5 text-[#8B8CF8]" /> Pesan Privat
-          </h2>
+    <div className="max-w-6xl mx-auto py-6 px-4">
+      <div className="bg-[#181A22] border border-[#292C36] rounded-2xl overflow-hidden grid grid-cols-1 md:grid-cols-3 min-h-[550px] shadow-xl">
+        {/* Panel Kiri: Daftar Pengguna */}
+        <div className="border-r border-[#292C36] p-4 space-y-4 flex flex-col">
+          <div className="flex items-center gap-2 text-[#F4F5F8] font-bold text-sm">
+            <MessageSquare className="w-4 h-4 text-[#8B8CF8]" /> Pesan Privat
+          </div>
+
           <div className="relative">
-            <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-[#9CA3B4]" />
+            <Search className="w-3.5 h-3.5 absolute left-3 top-3 text-[#9CA3B4]" />
             <input
               type="text"
               placeholder="Cari pengguna..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="w-full bg-[#101116] border border-[#292C36] rounded-xl pl-9 pr-4 py-2 text-xs text-[#F4F5F8] focus:outline-none focus:border-[#8B8CF8]"
+              className="w-full bg-[#14161D] border border-[#292C36] rounded-xl pl-8 pr-3 py-2 text-xs text-[#F4F5F8] focus:outline-none focus:border-[#8B8CF8]"
             />
+          </div>
+
+          <div className="space-y-1 overflow-y-auto flex-1 max-h-[420px] pr-1">
+            {filteredUsers.map((u) => (
+              <button
+                key={u.uid}
+                onClick={() => setSelectedUser(u)}
+                className={`w-full text-left p-3 rounded-xl flex items-center gap-3 transition-colors ${
+                  selectedUser?.uid === u.uid
+                    ? 'bg-[#8B8CF8]/10 border border-[#8B8CF8]/30'
+                    : 'hover:bg-[#14161D]'
+                }`}
+              >
+                <div className="w-9 h-9 rounded-full bg-[#8B8CF8]/20 border border-[#292C36] flex items-center justify-center text-[#8B8CF8] font-bold text-xs overflow-hidden shrink-0">
+                  {u.avatarUrl ? (
+                    <img src={u.avatarUrl} alt="" className="w-full h-full object-cover" />
+                  ) : (
+                    u.displayName?.[0] || 'U'
+                  )}
+                </div>
+                <div className="truncate">
+                  <div className="font-bold text-xs text-[#F4F5F8] truncate">{u.displayName}</div>
+                  <div className="text-[10px] text-[#9CA3B4] truncate">@{u.username || 'member'}</div>
+                </div>
+              </button>
+            ))}
+            {filteredUsers.length === 0 && (
+              <p className="text-center text-xs text-[#9CA3B4] py-8">Pengguna tidak ditemukan.</p>
+            )}
           </div>
         </div>
 
-        <div className="flex-1 overflow-y-auto divide-y divide-[#292C36]/50">
-          {filteredUsers.length === 0 ? (
-            <div className="p-6 text-center text-xs text-[#9CA3B4]">Tidak ada pengguna ditemukan.</div>
-          ) : (
-            filteredUsers.map((u) => {
-              const isSelected = selectedUser?.uid === u.uid;
-              return (
-                <button
-                  key={u.uid}
-                  onClick={() => setSelectedUser(u)}
-                  className={`w-full p-3.5 flex items-center gap-3 text-left transition-colors ${
-                    isSelected ? 'bg-[#8B8CF8]/15 border-l-4 border-[#8B8CF8]' : 'hover:bg-[#181A22]'
-                  }`}
-                >
-                  <div className="relative w-10 h-10 shrink-0">
-                    {u.avatarUrl ? (
-                      <img src={u.avatarUrl} alt="" className="w-full h-full rounded-full object-cover border border-[#292C36]" />
-                    ) : (
-                      <div className="w-full h-full rounded-full bg-[#8B8CF8]/20 border border-[#292C36] flex items-center justify-center text-[#8B8CF8] font-bold text-xs">
-                        {u.displayName?.[0] || 'U'}
-                      </div>
-                    )}
-                  </div>
-                  <div className="overflow-hidden flex-1">
-                    <p className="text-sm font-semibold text-[#F4F5F8] truncate">{u.displayName}</p>
-                    <p className="text-xs text-[#9CA3B4] truncate">@{u.username}</p>
-                  </div>
-                </button>
-              );
-            })
-          )}
-        </div>
-      </div>
-
-      {/* Area Chat Utama */}
-      <div className="md:col-span-2 flex flex-col h-full bg-[#181A22]">
-        {selectedUser ? (
-          <>
-            {/* Header Obrolan */}
-            <div className="p-4 border-b border-[#292C36] flex items-center gap-3 bg-[#14161D]">
-              <div className="w-9 h-9 shrink-0">
-                {selectedUser.avatarUrl ? (
-                  <img src={selectedUser.avatarUrl} alt="" className="w-full h-full rounded-full object-cover border border-[#292C36]" />
-                ) : (
-                  <div className="w-full h-full rounded-full bg-[#8B8CF8]/20 border border-[#292C36] flex items-center justify-center text-[#8B8CF8] font-bold text-xs">
-                    {selectedUser.displayName?.[0] || 'U'}
-                  </div>
-                )}
-              </div>
-              <div>
-                <p className="text-sm font-bold text-[#F4F5F8]">{selectedUser.displayName}</p>
-                <p className="text-xs text-[#9CA3B4]">@{selectedUser.username}</p>
-              </div>
-            </div>
-
-            {/* Isi Obrolan */}
-            <div className="flex-1 overflow-y-auto p-4 space-y-3">
-              {messages.length === 0 ? (
-                <div className="h-full flex items-center justify-center text-xs text-[#9CA3B4]">
-                  Belum ada pesan. Mulai percakapan sekarang!
+        {/* Panel Kanan: Jendela Percakapan */}
+        <div className="md:col-span-2 flex flex-col justify-between p-4 bg-[#14161D]/50">
+          {selectedUser ? (
+            <>
+              {/* Header Percakapan */}
+              <div className="flex items-center gap-3 border-b border-[#292C36] pb-3">
+                <div className="w-8 h-8 rounded-full bg-[#8B8CF8]/20 border border-[#292C36] flex items-center justify-center text-[#8B8CF8] font-bold text-xs overflow-hidden">
+                  {selectedUser.avatarUrl ? (
+                    <img src={selectedUser.avatarUrl} alt="" className="w-full h-full object-cover" />
+                  ) : (
+                    selectedUser.displayName?.[0] || 'U'
+                  )}
                 </div>
-              ) : (
-                messages.map((msg) => {
-                  const isMe = msg.senderId === user.uid;
+                <div>
+                  <h3 className="font-bold text-xs text-[#F4F5F8]">{selectedUser.displayName}</h3>
+                  <span className="text-[10px] text-[#9CA3B4]">@{selectedUser.username || 'member'}</span>
+                </div>
+              </div>
+
+              {/* Area Isi Pesan */}
+              <div className="flex-1 overflow-y-auto py-4 space-y-3 max-h-[380px] pr-1">
+                {messages.map((msg) => {
+                  const isMe = msg.senderId === user?.uid;
                   return (
                     <div
                       key={msg.id}
                       className={`flex ${isMe ? 'justify-end' : 'justify-start'}`}
                     >
                       <div
-                        className={`max-w-[75%] px-4 py-2.5 rounded-2xl text-xs leading-relaxed ${
+                        className={`max-w-[75%] px-3.5 py-2 rounded-2xl text-xs leading-relaxed ${
                           isMe
                             ? 'bg-[#8B8CF8] text-white rounded-br-none'
-                            : 'bg-[#101116] border border-[#292C36] text-[#F4F5F8] rounded-bl-none'
+                            : 'bg-[#181A22] border border-[#292C36] text-[#F4F5F8] rounded-bl-none'
                         }`}
                       >
-                        <p className="whitespace-pre-wrap break-words">{msg.content}</p>
+                        {msg.text}
                       </div>
                     </div>
                   );
-                })
-              )}
-              <div ref={messagesEndRef} />
-            </div>
+                })}
+                {messages.length === 0 && (
+                  <div className="text-center text-xs text-[#9CA3B4] py-16">
+                    Belum ada pesan. Mulai percakapan sekarang!
+                  </div>
+                )}
+              </div>
 
-            {/* Form Input Pesan */}
-            <form onSubmit={handleSendMessage} className="p-3 border-t border-[#292C36] bg-[#14161D] flex items-center gap-2">
-              <input
-                type="text"
-                placeholder={`Tulis pesan untuk ${selectedUser.displayName}...`}
-                value={newMessage}
-                onChange={(e) => setNewMessage(e.target.value)}
-                className="flex-1 bg-[#101116] border border-[#292C36] rounded-xl px-4 py-2.5 text-xs text-[#F4F5F8] focus:outline-none focus:border-[#8B8CF8]"
-              />
-              <button
-                type="submit"
-                disabled={!newMessage.trim()}
-                className="bg-[#8B8CF8] hover:bg-[#7A7BF6] text-white p-2.5 rounded-xl transition-colors disabled:opacity-50 shrink-0"
-              >
-                <Send className="w-4 h-4" />
-              </button>
-            </form>
-          </>
-        ) : (
-          <div className="h-full flex flex-col items-center justify-center p-8 text-center text-[#9CA3B4]">
-            <MessageSquare className="w-12 h-12 text-[#8B8CF8]/40 mb-3" />
-            <p className="text-sm font-semibold text-[#F4F5F8]">Pilih Pengguna untuk Memulai Obrolan</p>
-            <p className="text-xs mt-1">Pilih salah satu anggota dari daftar di sebelah kiri untuk berkirim pesan realtime.</p>
-          </div>
-        )}
+              {/* Input Kirim Pesan */}
+              <form onSubmit={handleSendMessage} className="flex items-center gap-2 pt-2 border-t border-[#292C36]">
+                <input
+                  type="text"
+                  placeholder={`Tulis pesan untuk ${selectedUser.displayName}...`}
+                  value={text}
+                  onChange={(e) => setText(e.target.value)}
+                  className="flex-1 bg-[#181A22] border border-[#292C36] rounded-xl px-4 py-2.5 text-xs text-[#F4F5F8] focus:outline-none focus:border-[#8B8CF8]"
+                />
+                <button
+                  type="submit"
+                  className="p-2.5 bg-[#8B8CF8] hover:bg-[#7879E8] text-white rounded-xl transition-colors shrink-0"
+                >
+                  <Send className="w-4 h-4" />
+                </button>
+              </form>
+            </>
+          ) : (
+            <div className="flex flex-col items-center justify-center h-full text-center text-[#9CA3B4] space-y-2">
+              <User className="w-10 h-10 text-[#292C36]" />
+              <p className="text-xs">Pilih salah satu anggota dari daftar di sebelah kiri untuk mulai mengobrol.</p>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

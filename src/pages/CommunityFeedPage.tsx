@@ -1,9 +1,21 @@
 import React, { useEffect, useState } from 'react';
-import { collection, onSnapshot, addDoc, serverTimestamp, query, orderBy, doc, getDoc } from 'firebase/firestore';
+import { collection, onSnapshot, addDoc, serverTimestamp, query, orderBy, doc, updateDoc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { useAuth } from '../features/auth/AuthContext';
 import { Post } from '../types';
-import { MessageSquare, Sparkles, Send, Image as ImageIcon, Flame, Trophy, Users, Megaphone } from 'lucide-react';
+import { Sparkles, Trophy, Megaphone, Shield, Swords, ExternalLink, Users, Heart, Coins, Radio, Gift } from 'lucide-react';
+
+interface BabuItem {
+  id: string;
+  name: string;
+  task: string;
+}
+
+interface TopDonorItem {
+  id: string;
+  name: string;
+  amount: string;
+}
 
 export const CommunityFeedPage: React.FC = () => {
   const { user, profile } = useAuth();
@@ -11,36 +23,73 @@ export const CommunityFeedPage: React.FC = () => {
   const [content, setContent] = useState('');
   const [category, setCategory] = useState('General');
   const [loading, setLoading] = useState(false);
+
+  // Data Komunitas
   const [announcement, setAnnouncement] = useState('');
+  const [babuList, setBabuList] = useState<BabuItem[]>([]);
+  const [topDonors, setTopDonors] = useState<TopDonorItem[]>([]);
+  const [rulesWar, setRulesWar] = useState('');
+  const [gbWarLink, setGbWarLink] = useState('');
+  const [donateUrl, setDonateUrl] = useState('');
+  const [liveStreamUrl, setLiveStreamUrl] = useState('');
+  const [discordWebhookUrl, setDiscordWebhookUrl] = useState('');
+
+  // Daily Check-In State
+  const [checkInClaimed, setCheckInClaimed] = useState(false);
 
   useEffect(() => {
     const q = query(collection(db, 'posts'), orderBy('createdAt', 'desc'));
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const list: Post[] = snapshot.docs.map((doc) => ({
-        ...(doc.data() as Post),
-        id: doc.id,
+    const unsubscribePosts = onSnapshot(q, (snapshot) => {
+      const list: Post[] = snapshot.docs.map((docSnap) => ({
+        ...(docSnap.data() as Post),
+        id: docSnap.id,
       }));
       setPosts(list);
     });
 
-    // Ambil pengumuman dari config admin
-    const fetchAnnouncement = async () => {
-      try {
-        const docSnap = await getDoc(doc(db, 'settings', 'communityConfig'));
-        if (docSnap.exists()) {
-          const data = docSnap.data();
-          if (data.announcementText) {
-            setAnnouncement(data.announcementText);
-          }
-        }
-      } catch (err) {
-        console.error('Gagal memuat pengumuman:', err);
+    const unsubscribeConfig = onSnapshot(doc(db, 'settings', 'communityConfig'), (docSnap) => {
+      if (docSnap.exists()) {
+        const data = docSnap.data();
+        setAnnouncement(data.announcementText || '');
+        setBabuList(data.babuList || []);
+        setTopDonors(data.topDonors || []);
+        setRulesWar(data.rulesWar || '');
+        setGbWarLink(data.gbWarLink || '');
+        setDonateUrl(data.donateUrl || '');
+        setLiveStreamUrl(data.liveStreamUrl || '');
+        setDiscordWebhookUrl(data.discordWebhookUrl || '');
       }
-    };
-    fetchAnnouncement();
+    });
 
-    return () => unsubscribe();
+    return () => {
+      unsubscribePosts();
+      unsubscribeConfig();
+    };
   }, []);
+
+  // Kirim Webhook ke Discord
+  const triggerDiscordWebhook = async (postContent: string) => {
+    if (!discordWebhookUrl) return;
+    try {
+      await fetch(discordWebhookUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          embeds: [
+            {
+              title: '💬 Postingan Baru di OLEXTY Community!',
+              description: postContent,
+              color: 9145608,
+              author: { name: profile?.displayName || 'Member' },
+              timestamp: new Date().toISOString(),
+            },
+          ],
+        }),
+      });
+    } catch (err) {
+      console.error('Gagal kirim webhook Discord:', err);
+    }
+  };
 
   const handleCreatePost = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -51,12 +100,14 @@ export const CommunityFeedPage: React.FC = () => {
         userId: user.uid,
         userName: profile?.displayName || 'Member OLEXTY',
         userAvatar: profile?.avatarUrl || '',
+        userBadge: (profile as any)?.badge || '',
         content: content.trim(),
         category,
         likes: [],
         commentsCount: 0,
         createdAt: serverTimestamp(),
       });
+      triggerDiscordWebhook(content.trim());
       setContent('');
     } catch (err) {
       console.error(err);
@@ -65,124 +116,191 @@ export const CommunityFeedPage: React.FC = () => {
     }
   };
 
+  // Daily Check-In Claim Poin
+  const handleDailyCheckIn = async () => {
+    if (!user) return;
+    try {
+      const currentPoints = (profile as any)?.points || 0;
+      const newPoints = currentPoints + 100;
+      await updateDoc(doc(db, 'users', user.uid), {
+        points: newPoints,
+        lastCheckIn: new Date(),
+      });
+      setCheckInClaimed(true);
+      alert('Selamat! Kamu mendapatkan +100 Poin Check-In Harian! 🎉');
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
   return (
     <div className="space-y-6 pb-12">
-      {/* --- BANNER PENGUMUMAN DARI ADMIN (MUNCUL JIKA ADA) --- */}
+      {/* Banner Announcement */}
       {announcement && (
-        <div className="bg-gradient-to-r from-amber-500/10 via-amber-500/5 to-transparent border border-amber-500/30 rounded-2xl p-4 sm:p-5 flex items-start gap-3 shadow-lg">
-          <div className="p-2 bg-amber-500/20 text-amber-400 rounded-xl shrink-0 mt-0.5">
-            <Megaphone className="w-5 h-5 animate-bounce" />
-          </div>
-          <div className="space-y-1">
-            <h4 className="font-bold text-xs text-amber-400 uppercase tracking-wider">Pengumuman Resmi Admin</h4>
-            <p className="text-xs sm:text-sm text-[#F4F5F8] leading-relaxed whitespace-pre-wrap">{announcement}</p>
-          </div>
+        <div className="bg-gradient-to-r from-amber-500/10 via-amber-500/5 to-transparent border border-amber-500/30 rounded-2xl p-4 flex items-start gap-3">
+          <Megaphone className="w-5 h-5 text-amber-400 shrink-0 mt-0.5 animate-bounce" />
+          <p className="text-xs sm:text-sm text-[#F4F5F8]">{announcement}</p>
         </div>
       )}
 
-      {/* --- BANNER HEADER UTAMA (Gaya Esports / Gaming Community) --- */}
-      <div className="relative rounded-2xl overflow-hidden bg-gradient-to-r from-[#181A22] via-[#202330] to-[#181A22] border border-[#292C36] p-6 sm:p-8 shadow-xl">
-        <div className="absolute top-0 right-0 w-96 h-96 bg-[#8B8CF8]/10 rounded-full blur-3xl pointer-events-none"></div>
-        <div className="relative z-10 flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
-          <div className="space-y-2">
-            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#8B8CF8]/10 text-[#8B8CF8] text-[11px] font-bold tracking-wider uppercase border border-[#8B8CF8]/20">
-              <Sparkles className="w-3.5 h-3.5" /> Circle Not Marga
-            </div>
-            <h1 className="text-2xl sm:text-3xl font-black text-[#F4F5F8] tracking-tight">
-              OLEXTY COMMUNITY HQ
-            </h1>
-            <p className="text-xs sm:text-sm text-[#9CA3B4] max-w-xl">
-              Pusat kumpul player, mabar, diskusi strategi game, dan pamerkan momen klip terbaik kalian di sini!
-            </p>
+      {/* Header Banner */}
+      <div className="relative rounded-2xl overflow-hidden bg-gradient-to-r from-[#181A22] via-[#202330] to-[#181A22] border border-[#292C36] p-6 shadow-xl">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+          <div>
+            <span className="text-[10px] font-bold text-[#8B8CF8] bg-[#8B8CF8]/10 px-2.5 py-1 rounded-full uppercase">Circle Not Marga</span>
+            <h1 className="text-2xl font-black text-[#F4F5F8] mt-1">OLEXTY COMMUNITY HQ</h1>
           </div>
 
-          {/* Quick Stats Widget */}
-          <div className="flex items-center gap-3 bg-[#14161D]/80 backdrop-blur border border-[#292C36] p-3 rounded-xl">
-            <div className="p-2.5 bg-[#8B8CF8]/10 text-[#8B8CF8] rounded-lg">
-              <Trophy className="w-5 h-5" />
-            </div>
-            <div>
-              <span className="text-[10px] text-[#9CA3B4] block uppercase font-bold">Status Arena</span>
-              <span className="text-xs font-bold text-emerald-400 flex items-center gap-1.5">
-                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span> Live & Active
-              </span>
-            </div>
-          </div>
+          {/* Daily Check-In Widget */}
+          {user && (
+            <button
+              onClick={handleDailyCheckIn}
+              disabled={checkInClaimed}
+              className="flex items-center gap-2 bg-gradient-to-r from-[#8B8CF8] to-[#7879E8] hover:opacity-90 text-white px-4 py-2.5 rounded-xl text-xs font-bold transition-all shadow-lg disabled:opacity-50"
+            >
+              <Gift className="w-4 h-4" />
+              {checkInClaimed ? 'Poin Diklaim Hari Ini' : 'Klaim Daily Check-In (+100 PTS)'}
+            </button>
+          )}
         </div>
       </div>
 
-      {/* --- FORM BUAT POSTINGAN --- */}
-      {user ? (
-        <form onSubmit={handleCreatePost} className="bg-[#181A22] border border-[#292C36] rounded-2xl p-4 sm:p-5 shadow-lg space-y-3">
-          <div className="flex items-center gap-2 text-xs font-bold text-[#F4F5F8]">
-            <Sparkles className="w-4 h-4 text-[#8B8CF8]" /> Buat Diskusi Komunitas
-          </div>
-          <textarea
-            rows={3}
-            placeholder="Apa yang ingin kamu bagikan dengan anggota komunitas hari ini?"
-            value={content}
-            onChange={(e) => setContent(e.target.value)}
-            className="w-full bg-[#14161D] border border-[#292C36] rounded-xl p-3 text-xs text-[#F4F5F8] focus:outline-none focus:border-[#8B8CF8] resize-none"
-            required
-          />
-          <div className="flex items-center justify-between pt-2">
-            <select
-              value={category}
-              onChange={(e) => setCategory(e.target.value)}
-              className="bg-[#14161D] border border-[#292C36] rounded-xl px-3 py-2 text-xs text-[#F4F5F8] focus:outline-none focus:border-[#8B8CF8]"
-            >
-              <option value="General">General</option>
-              <option value="Showcase">Showcase</option>
-              <option value="Tournament">Tournament</option>
-              <option value="Discussion">Discussion</option>
-            </select>
-            <button
-              type="submit"
-              disabled={loading}
-              className="bg-[#8B8CF8] hover:bg-[#7879E8] text-white px-5 py-2 rounded-xl text-xs font-semibold flex items-center gap-2 transition-colors disabled:opacity-50"
-            >
-              <Send className="w-3.5 h-3.5" /> {loading ? 'Mengirim...' : 'Kirim Postingan'}
-            </button>
-          </div>
-        </form>
-      ) : (
-        <div className="bg-[#181A22] border border-[#292C36] rounded-2xl p-4 text-center text-xs text-[#9CA3B4]">
-          Silakan <a href="/login" className="text-[#8B8CF8] font-bold underline">Masuk</a> terlebih dahulu untuk ikut membuat postingan dan berdiskusi.
-        </div>
-      )}
-
-      {/* --- FEED LIST --- */}
-      <div className="space-y-4">
-        {posts.map((post) => (
-          <div key={post.id} className="bg-[#181A22] border border-[#292C36] rounded-2xl p-5 space-y-3 shadow-md">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-full bg-[#8B8CF8]/20 border border-[#292C36] flex items-center justify-center text-[#8B8CF8] font-bold text-xs overflow-hidden">
-                  {post.userAvatar ? (
-                    <img src={post.userAvatar} alt="" className="w-full h-full object-cover" />
-                  ) : (
-                    post.userName?.[0] || 'U'
-                  )}
-                </div>
-                <div>
-                  <h4 className="font-bold text-xs text-[#F4F5F8]">{post.userName}</h4>
-                  <span className="text-[10px] text-[#9CA3B4]">Anggota OLEXTY</span>
-                </div>
+      {/* Grid Utama */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Kolom Feed Diskusi */}
+        <div className="lg:col-span-2 space-y-6">
+          {/* Live Stream Widget Embed */}
+          {liveStreamUrl && (
+            <div className="bg-[#181A22] border border-[#292C36] rounded-2xl p-4 space-y-2">
+              <div className="flex items-center gap-2 text-rose-500 font-bold text-xs uppercase">
+                <Radio className="w-4 h-4 animate-pulse" /> Live Stream Mabar / War
               </div>
-              <span className="text-[10px] bg-[#8B8CF8]/10 text-[#8B8CF8] border border-[#8B8CF8]/20 px-2.5 py-1 rounded-lg font-bold">
-                {post.category || 'General'}
-              </span>
+              <div className="aspect-video rounded-xl overflow-hidden border border-[#292C36]">
+                <iframe src={liveStreamUrl} title="Live Stream" className="w-full h-full" allowFullScreen />
+              </div>
             </div>
+          )}
 
-            <p className="text-xs sm:text-sm text-[#F4F5F8] leading-relaxed whitespace-pre-wrap">{post.content}</p>
-          </div>
-        ))}
+          {/* Form Buat Postingan */}
+          {user && (
+            <form onSubmit={handleCreatePost} className="bg-[#181A22] border border-[#292C36] rounded-2xl p-5 space-y-3">
+              <textarea
+                rows={3}
+                placeholder="Bagikan sesuatu dengan komunitas..."
+                value={content}
+                onChange={(e) => setContent(e.target.value)}
+                className="w-full bg-[#14161D] border border-[#292C36] rounded-xl p-3 text-xs text-white focus:outline-none focus:border-[#8B8CF8]"
+                required
+              />
+              <div className="flex justify-between items-center">
+                <select value={category} onChange={(e) => setCategory(e.target.value)} className="bg-[#14161D] border border-[#292C36] text-xs text-white rounded-xl p-2">
+                  <option value="General">General</option>
+                  <option value="Showcase">Showcase</option>
+                  <option value="Tournament">Tournament</option>
+                </select>
+                <button type="submit" disabled={loading} className="bg-[#8B8CF8] text-white px-4 py-2 rounded-xl text-xs font-bold">
+                  {loading ? 'Mengirim...' : 'Kirim Postingan'}
+                </button>
+              </div>
+            </form>
+          )}
 
-        {posts.length === 0 && (
-          <div className="text-center py-12 text-xs text-[#9CA3B4] bg-[#181A22] border border-[#292C36] rounded-2xl">
-            Belum ada diskusi atau postingan di feed saat ini.
+          {/* List Feed */}
+          <div className="space-y-4">
+            {posts.map((post) => (
+              <div key={post.id} className="bg-[#181A22] border border-[#292C36] rounded-2xl p-5 space-y-3">
+                <div className="flex justify-between items-center">
+                  <div className="flex items-center gap-2">
+                    <span className="font-bold text-xs text-white">{post.userName}</span>
+                    {/* Display Badge Gelar Pengguna */}
+                    {(post as any).userBadge && (
+                      <span className="text-[10px] bg-amber-500/10 text-amber-400 border border-amber-500/20 px-2 py-0.5 rounded font-bold">
+                        {(post as any).userBadge}
+                      </span>
+                    )}
+                  </div>
+                  <span className="text-[10px] bg-[#8B8CF8]/10 text-[#8B8CF8] px-2 py-0.5 rounded font-bold">{post.category}</span>
+                </div>
+                <p className="text-xs text-white leading-relaxed">{post.content}</p>
+              </div>
+            ))}
           </div>
-        )}
+        </div>
+
+        {/* Sidebar Widgets */}
+        <div className="space-y-6">
+          {/* Top Donatur Leaderboard */}
+          <div className="bg-[#181A22] border border-[#292C36] rounded-2xl p-5 space-y-3">
+            <div className="flex items-center gap-2 text-amber-400 font-bold text-xs uppercase border-b border-[#292C36] pb-2">
+              <Coins className="w-4 h-4" /> Leaderboard Top Donatur
+            </div>
+            <div className="space-y-2">
+              {topDonors.map((d, index) => (
+                <div key={d.id} className="flex justify-between items-center text-xs bg-[#14161D] p-2 rounded-xl">
+                  <span className="font-bold text-white">#{index + 1} {d.name}</span>
+                  <span className="text-amber-400 font-bold">{d.amount}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Rules War Widget */}
+          <div className="bg-[#181A22] border border-[#292C36] rounded-2xl p-5 space-y-3">
+            <div className="flex items-center gap-2 text-amber-400 font-bold text-xs uppercase border-b border-[#292C36] pb-2">
+              <Shield className="w-4 h-4" /> Rules & Aturan War
+            </div>
+            {rulesWar ? (
+              <p className="text-xs text-[#9CA3B4] leading-relaxed whitespace-pre-wrap">{rulesWar}</p>
+            ) : (
+              <p className="text-xs text-[#9CA3B4] italic">Belum ada aturan war khusus.</p>
+            )}
+          </div>
+
+          {/* Link GB War Widget */}
+          <div className="bg-[#181A22] border border-[#292C36] rounded-2xl p-5 space-y-3">
+            <div className="flex items-center gap-2 text-emerald-400 font-bold text-xs uppercase border-b border-[#292C36] pb-2">
+              <Swords className="w-4 h-4" /> Akses GB War
+            </div>
+            {gbWarLink ? (
+              <a
+                href={gbWarLink}
+                target="_blank"
+                rel="noreferrer"
+                className="flex items-center justify-between bg-[#14161D] border border-[#292C36] hover:border-[#8B8CF8] p-3 rounded-xl text-xs text-[#8B8CF8] font-bold transition-all group"
+              >
+                <span>🔗 Masuk Room GB War</span>
+                <ExternalLink className="w-4 h-4 text-[#9CA3B4] group-hover:text-[#8B8CF8]" />
+              </a>
+            ) : (
+              <p className="text-xs text-[#9CA3B4] italic">Link GB War belum tersedia.</p>
+            )}
+          </div>
+
+          {/* Support / Donasi Link */}
+          <div className="bg-[#181A22] border border-[#292C36] rounded-2xl p-5 space-y-2">
+            <div className="flex items-center gap-2 text-[#8B8CF8] font-bold text-xs uppercase">
+              <Heart className="w-4 h-4 text-rose-400" /> Support Komunitas
+            </div>
+            <a href={donateUrl || 'https://saweria.co/olexty'} target="_blank" rel="noreferrer" className="block text-center bg-amber-500 text-black font-extrabold p-2.5 rounded-xl text-xs">
+              Saweria / Donasi
+            </a>
+          </div>
+
+          {/* List Babu */}
+          <div className="bg-[#181A22] border border-[#292C36] rounded-2xl p-5 space-y-3">
+            <div className="flex items-center gap-2 text-[#8B8CF8] font-bold text-xs uppercase border-b border-[#292C36] pb-2">
+              <Users className="w-4 h-4" /> List Babu / Tugas
+            </div>
+            <div className="space-y-2">
+              {babuList.map((babu) => (
+                <div key={babu.id} className="flex justify-between text-xs bg-[#14161D] p-2 rounded-xl text-white">
+                  <span>{babu.name}</span>
+                  <span className="text-[#8B8CF8]">{babu.task}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   );

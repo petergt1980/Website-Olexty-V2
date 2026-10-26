@@ -1,13 +1,19 @@
 import React, { useEffect, useState } from 'react';
 import { collection, onSnapshot, doc, updateDoc, addDoc, deleteDoc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../../../lib/firebase';
-import { UserProfile, UserRole, EventItem, SocialLinks } from '../../../types';
-import { Users, Settings, Calendar, TrendingUp, Plus, Trash2, Shield, Megaphone, Share2, MessageCircle, Video, Youtube, Check, Save, Ban, CheckCircle, Search, Image as ImageIcon, Swords, Link as LinkIcon } from 'lucide-react';
+import { UserProfile, UserRole, EventItem } from '../../../types';
+import { Users, Settings, Calendar, TrendingUp, Plus, Trash2, Shield, Megaphone, Share2, MessageCircle, Video, Youtube, Check, Save, Ban, CheckCircle, Search, Image as ImageIcon, Swords, Link as LinkIcon, Award, Coins, Radio, Heart } from 'lucide-react';
 
 interface BabuItem {
   id: string;
   name: string;
   task: string;
+}
+
+interface TopDonorItem {
+  id: string;
+  name: string;
+  amount: string;
 }
 
 export const AdminMembersPage: React.FC = () => {
@@ -33,11 +39,16 @@ export const AdminMembersPage: React.FC = () => {
   const [babuName, setBabuName] = useState('');
   const [babuTask, setBabuTask] = useState('');
 
+  // State Top Donatur
+  const [topDonors, setTopDonors] = useState<TopDonorItem[]>([]);
+  const [donorName, setDonorName] = useState('');
+  const [donorAmount, setDonorAmount] = useState('');
+
   // State Rules & GB War
   const [rulesWar, setRulesWar] = useState('');
   const [gbWarLink, setGbWarLink] = useState('');
 
-  // State Config & Branding
+  // State Config & Branding & Integrasi
   const [logoUrl, setLogoUrl] = useState('/OLEXTY.png');
   const [siteName, setSiteName] = useState('OLEXTY');
   const [siteSubName, setSiteSubName] = useState('COMMUNITY');
@@ -47,6 +58,9 @@ export const AdminMembersPage: React.FC = () => {
   const [tiktokUrl, setTiktokUrl] = useState('');
   const [youtubeUrl, setYoutubeUrl] = useState('');
   const [announcementText, setAnnouncementText] = useState('');
+  const [discordWebhookUrl, setDiscordWebhookUrl] = useState('');
+  const [liveStreamUrl, setLiveStreamUrl] = useState('');
+  const [donateUrl, setDonateUrl] = useState('');
   const [savingConfig, setSavingConfig] = useState(false);
   const [configSuccess, setConfigSuccess] = useState(false);
 
@@ -82,8 +96,12 @@ export const AdminMembersPage: React.FC = () => {
         setYoutubeUrl(data.youtubeUrl || '');
         setAnnouncementText(data.announcementText || '');
         setBabuList(data.babuList || []);
+        setTopDonors(data.topDonors || []);
         setRulesWar(data.rulesWar || '');
         setGbWarLink(data.gbWarLink || '');
+        setDiscordWebhookUrl(data.discordWebhookUrl || '');
+        setLiveStreamUrl(data.liveStreamUrl || '');
+        setDonateUrl(data.donateUrl || '');
       }
     };
     fetchConfig();
@@ -97,6 +115,10 @@ export const AdminMembersPage: React.FC = () => {
   // Handlers Member
   const handleRoleChange = async (uid: string, newRole: UserRole) => {
     await updateDoc(doc(db, 'users', uid), { role: newRole });
+  };
+
+  const handleBadgeChange = async (uid: string, badge: string) => {
+    await updateDoc(doc(db, 'users', uid), { badge });
   };
 
   const handleToggleSuspend = async (uid: string, currentStatus?: boolean) => {
@@ -149,7 +171,25 @@ export const AdminMembersPage: React.FC = () => {
   };
 
   const handleRemoveBabu = (id: string) => {
-    setBabuList(babuList.filter(item => item.id !== id));
+    setBabuList(babuList.filter((item) => item.id !== id));
+  };
+
+  // Handlers Top Donatur
+  const handleAddDonor = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!donorName.trim()) return;
+    const newItem: TopDonorItem = {
+      id: Date.now().toString(),
+      name: donorName.trim(),
+      amount: donorAmount.trim() || 'Rp 10.000',
+    };
+    setTopDonors([...topDonors, newItem]);
+    setDonorName('');
+    setDonorAmount('');
+  };
+
+  const handleRemoveDonor = (id: string) => {
+    setTopDonors(topDonors.filter((item) => item.id !== id));
   };
 
   // Handlers Save Config & Branding
@@ -168,8 +208,12 @@ export const AdminMembersPage: React.FC = () => {
         youtubeUrl: youtubeUrl.trim(),
         announcementText: announcementText.trim(),
         babuList,
+        topDonors,
         rulesWar: rulesWar.trim(),
         gbWarLink: gbWarLink.trim(),
+        discordWebhookUrl: discordWebhookUrl.trim(),
+        liveStreamUrl: liveStreamUrl.trim(),
+        donateUrl: donateUrl.trim(),
       }, { merge: true });
       setConfigSuccess(true);
       setTimeout(() => setConfigSuccess(false), 3000);
@@ -195,7 +239,7 @@ export const AdminMembersPage: React.FC = () => {
             <Shield className="w-6 h-6 text-amber-400" /> Control Center (Admin Panel)
           </h1>
           <p className="text-sm text-[#9CA3B4] mt-1">
-            Pusat manajemen anggota, event, list tugas, rules war, dan branding website.
+            Pusat manajemen anggota, gelar/badge, event, donatur, babu, dan integrasi website.
           </p>
         </div>
       </div>
@@ -204,7 +248,7 @@ export const AdminMembersPage: React.FC = () => {
       <div className="flex items-center gap-2 border-b border-[#292C36] pb-2 overflow-x-auto">
         <button
           onClick={() => setActiveTab('stats')}
-          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold transition-all ${
+          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold transition-all shrink-0 ${
             activeTab === 'stats' ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20' : 'text-[#9CA3B4] hover:text-[#F4F5F8] hover:bg-[#181A22]'
           }`}
         >
@@ -213,16 +257,16 @@ export const AdminMembersPage: React.FC = () => {
 
         <button
           onClick={() => setActiveTab('members')}
-          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold transition-all ${
+          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold transition-all shrink-0 ${
             activeTab === 'members' ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20' : 'text-[#9CA3B4] hover:text-[#F4F5F8] hover:bg-[#181A22]'
           }`}
         >
-          <Users className="w-4 h-4" /> Kelola Member ({members.length})
+          <Users className="w-4 h-4" /> Kelola Member & Badge ({members.length})
         </button>
 
         <button
           onClick={() => setActiveTab('events')}
-          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold transition-all ${
+          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold transition-all shrink-0 ${
             activeTab === 'events' ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20' : 'text-[#9CA3B4] hover:text-[#F4F5F8] hover:bg-[#181A22]'
           }`}
         >
@@ -231,16 +275,16 @@ export const AdminMembersPage: React.FC = () => {
 
         <button
           onClick={() => setActiveTab('babu')}
-          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold transition-all ${
+          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold transition-all shrink-0 ${
             activeTab === 'babu' ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20' : 'text-[#9CA3B4] hover:text-[#F4F5F8] hover:bg-[#181A22]'
           }`}
         >
-          <Users className="w-4 h-4" /> List Babu ({babuList.length})
+          <Coins className="w-4 h-4" /> Babu & Donatur
         </button>
 
         <button
           onClick={() => setActiveTab('war')}
-          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold transition-all ${
+          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold transition-all shrink-0 ${
             activeTab === 'war' ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20' : 'text-[#9CA3B4] hover:text-[#F4F5F8] hover:bg-[#181A22]'
           }`}
         >
@@ -249,11 +293,11 @@ export const AdminMembersPage: React.FC = () => {
 
         <button
           onClick={() => setActiveTab('settings')}
-          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold transition-all ${
+          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold transition-all shrink-0 ${
             activeTab === 'settings' ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20' : 'text-[#9CA3B4] hover:text-[#F4F5F8] hover:bg-[#181A22]'
           }`}
         >
-          <Settings className="w-4 h-4" /> Branding & Sosmed
+          <Settings className="w-4 h-4" /> Branding, Stream & Webhook
         </button>
       </div>
 
@@ -280,7 +324,7 @@ export const AdminMembersPage: React.FC = () => {
         </div>
       )}
 
-      {/* Tab 2: Manajemen Member */}
+      {/* Tab 2: Manajemen Member & Badge Gelar */}
       {activeTab === 'members' && (
         <div className="space-y-4">
           <div className="relative">
@@ -294,13 +338,14 @@ export const AdminMembersPage: React.FC = () => {
             />
           </div>
 
-          <div className="bg-[#181A22] border border-[#292C36] rounded-2xl overflow-hidden">
+          <div className="bg-[#181A22] border border-[#292C36] rounded-2xl overflow-hidden shadow-lg">
             <div className="overflow-x-auto">
               <table className="w-full text-left text-xs text-[#9CA3B4]">
                 <thead className="bg-[#14161D] text-[#F4F5F8] border-b border-[#292C36] uppercase tracking-wider text-[11px]">
                   <tr>
                     <th className="p-4">Pengguna</th>
-                    <th className="p-4">Role</th>
+                    <th className="p-4">Gelar / Badge Spesial</th>
+                    <th className="p-4">Role Akses</th>
                     <th className="p-4">Status Akun</th>
                     <th className="p-4 text-right">Tindakan</th>
                   </tr>
@@ -309,7 +354,7 @@ export const AdminMembersPage: React.FC = () => {
                   {filteredMembers.map((m) => (
                     <tr key={m.uid} className="hover:bg-[#292C36]/30 transition-colors">
                       <td className="p-4 flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-full bg-[#8B8CF8]/20 border border-[#292C36] flex items-center justify-center text-[#8B8CF8] font-bold">
+                        <div className="w-8 h-8 rounded-full bg-[#8B8CF8]/20 border border-[#292C36] flex items-center justify-center text-[#8B8CF8] font-bold shrink-0">
                           {m.avatarUrl ? (
                             <img src={m.avatarUrl} alt="" className="w-full h-full object-cover rounded-full" />
                           ) : (
@@ -321,17 +366,38 @@ export const AdminMembersPage: React.FC = () => {
                           <div className="text-[11px] text-[#9CA3B4]">{m.email}</div>
                         </div>
                       </td>
+
+                      {/* Select Badge Gelar */}
+                      <td className="p-4">
+                        <select
+                          value={(m as any).badge || ''}
+                          onChange={(e) => handleBadgeChange(m.uid, e.target.value)}
+                          className="bg-[#14161D] border border-[#292C36] rounded-lg px-2.5 py-1.5 text-xs text-[#F4F5F8] focus:outline-none focus:border-[#8B8CF8]"
+                        >
+                          <option value="">(Tanpa Badge)</option>
+                          <option value="👑 Owner">👑 Owner</option>
+                          <option value="🛠️ Admin">🛠️ Admin</option>
+                          <option value="🔥 VIP Donatur">🔥 VIP Donatur</option>
+                          <option value="👑 Guild Leader">👑 Guild Leader</option>
+                          <option value="⚔️ Top Fragger">⚔️ Top Fragger</option>
+                          <option value="🎮 Pro Player">🎮 Pro Player</option>
+                          <option value="🌟 Member Active">🌟 Member Active</option>
+                        </select>
+                      </td>
+
+                      {/* Select Role */}
                       <td className="p-4">
                         <select
                           value={m.role || 'member'}
                           onChange={(e) => handleRoleChange(m.uid, e.target.value as UserRole)}
-                          className="bg-[#14161D] border border-[#292C36] rounded-lg px-2 py-1 text-xs text-[#F4F5F8] focus:outline-none focus:border-[#8B8CF8]"
+                          className="bg-[#14161D] border border-[#292C36] rounded-lg px-2.5 py-1.5 text-xs text-[#F4F5F8] focus:outline-none focus:border-[#8B8CF8]"
                         >
                           <option value="member">Member</option>
                           <option value="moderator">Moderator</option>
                           <option value="admin">Admin</option>
                         </select>
                       </td>
+
                       <td className="p-4">
                         {m.isSuspended ? (
                           <span className="inline-flex items-center gap-1 text-red-400 bg-red-500/10 px-2 py-0.5 rounded-md text-[11px] border border-red-500/20">
@@ -343,6 +409,7 @@ export const AdminMembersPage: React.FC = () => {
                           </span>
                         )}
                       </td>
+
                       <td className="p-4 text-right">
                         <button
                           onClick={() => handleToggleSuspend(m.uid, m.isSuspended)}
@@ -451,75 +518,110 @@ export const AdminMembersPage: React.FC = () => {
         </div>
       )}
 
-      {/* Tab 4: Kelola List Babu */}
+      {/* Tab 4: Kelola Babu & Donatur */}
       {activeTab === 'babu' && (
-        <div className="bg-[#181A22] border border-[#292C36] rounded-2xl p-6 space-y-6">
-          <h3 className="font-bold text-sm text-[#F4F5F8] flex items-center gap-2">
-            <Users className="w-4 h-4 text-[#8B8CF8]" /> Manajemen List Babu / Tugas Harian
-          </h3>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {/* Top Donatur */}
+          <div className="bg-[#181A22] border border-[#292C36] rounded-2xl p-6 space-y-4 shadow-lg">
+            <h3 className="font-bold text-sm text-[#F4F5F8] flex items-center gap-2">
+              <Coins className="w-4 h-4 text-amber-400" /> Leaderboard Top Donatur
+            </h3>
 
-          <form onSubmit={handleAddBabu} className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            <input
-              type="text"
-              placeholder="Nama Anggota"
-              value={babuName}
-              onChange={(e) => setBabuName(e.target.value)}
-              className="bg-[#14161D] border border-[#292C36] rounded-xl px-3 py-2 text-xs text-[#F4F5F8] focus:outline-none focus:border-[#8B8CF8]"
-              required
-            />
-            <input
-              type="text"
-              placeholder="Tugas (contoh: Piket Base / GB)"
-              value={babuTask}
-              onChange={(e) => setBabuTask(e.target.value)}
-              className="bg-[#14161D] border border-[#292C36] rounded-xl px-3 py-2 text-xs text-[#F4F5F8] focus:outline-none focus:border-[#8B8CF8]"
-            />
-            <button
-              type="submit"
-              className="bg-[#8B8CF8] hover:bg-[#7879E8] text-white px-4 py-2 rounded-xl text-xs font-semibold flex items-center justify-center gap-2 transition-colors"
-            >
-              <Plus className="w-4 h-4" /> Tambah Babu
-            </button>
-          </form>
+            <form onSubmit={handleAddDonor} className="space-y-2">
+              <input
+                type="text"
+                placeholder="Nama Donatur (misal: SultanFF)"
+                value={donorName}
+                onChange={(e) => setDonorName(e.target.value)}
+                className="w-full bg-[#14161D] border border-[#292C36] rounded-xl px-3 py-2 text-xs text-[#F4F5F8] focus:outline-none focus:border-[#8B8CF8]"
+                required
+              />
+              <input
+                type="text"
+                placeholder="Jumlah Donasi (misal: Rp 50.000)"
+                value={donorAmount}
+                onChange={(e) => setDonorAmount(e.target.value)}
+                className="w-full bg-[#14161D] border border-[#292C36] rounded-xl px-3 py-2 text-xs text-[#F4F5F8] focus:outline-none focus:border-[#8B8CF8]"
+                required
+              />
+              <button
+                type="submit"
+                className="w-full bg-amber-500 hover:bg-amber-600 text-black font-bold p-2.5 rounded-xl text-xs flex items-center justify-center gap-2 transition-colors"
+              >
+                <Plus className="w-4 h-4" /> Tambah Donatur
+              </button>
+            </form>
 
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse">
-              <thead>
-                <tr className="border-b border-[#292C36] text-[10px] text-[#9CA3B4] uppercase">
-                  <th className="py-2.5 px-3">Nama</th>
-                  <th className="py-2.5 px-3">Tugas</th>
-                  <th className="py-2.5 px-3 text-right">Aksi</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-[#292C36] text-xs">
-                {babuList.map((item) => (
-                  <tr key={item.id} className="hover:bg-[#14161D]/50 transition-colors">
-                    <td className="py-3 px-3 font-bold text-[#F4F5F8]">{item.name}</td>
-                    <td className="py-3 px-3 text-[#9CA3B4]">{item.task}</td>
-                    <td className="py-3 px-3 text-right">
-                      <button
-                        onClick={() => handleRemoveBabu(item.id)}
-                        className="p-1.5 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 rounded-lg transition-colors"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-                {babuList.length === 0 && (
-                  <tr>
-                    <td colSpan={3} className="text-center py-6 text-xs text-[#9CA3B4]">Belum ada data list babu. Jangan lupa klik "Simpan" di tab Branding setelah mengubah!</td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
+            <div className="space-y-2 pt-2">
+              {topDonors.map((item, idx) => (
+                <div key={item.id} className="bg-[#14161D] border border-[#292C36] p-2.5 rounded-xl flex items-center justify-between text-xs">
+                  <div className="flex items-center gap-2">
+                    <span className="font-extrabold text-amber-400">#{idx + 1}</span>
+                    <span className="font-bold text-[#F4F5F8]">{item.name}</span>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <span className="text-emerald-400 font-semibold">{item.amount}</span>
+                    <button onClick={() => handleRemoveDonor(item.id)} className="text-rose-400 hover:text-rose-300">
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                </div>
+              ))}
+              {topDonors.length === 0 && <p className="text-xs text-[#9CA3B4] text-center py-2 italic">Belum ada donatur.</p>}
+            </div>
+          </div>
+
+          {/* List Babu */}
+          <div className="bg-[#181A22] border border-[#292C36] rounded-2xl p-6 space-y-4 shadow-lg">
+            <h3 className="font-bold text-sm text-[#F4F5F8] flex items-center gap-2">
+              <Users className="w-4 h-4 text-[#8B8CF8]" /> Manajemen List Babu Circle
+            </h3>
+
+            <form onSubmit={handleAddBabu} className="space-y-2">
+              <input
+                type="text"
+                placeholder="Nama Anggota"
+                value={babuName}
+                onChange={(e) => setBabuName(e.target.value)}
+                className="w-full bg-[#14161D] border border-[#292C36] rounded-xl px-3 py-2 text-xs text-[#F4F5F8] focus:outline-none focus:border-[#8B8CF8]"
+                required
+              />
+              <input
+                type="text"
+                placeholder="Tugas (contoh: Piket Base / Ladies / GB)"
+                value={babuTask}
+                onChange={(e) => setBabuTask(e.target.value)}
+                className="w-full bg-[#14161D] border border-[#292C36] rounded-xl px-3 py-2 text-xs text-[#F4F5F8] focus:outline-none focus:border-[#8B8CF8]"
+              />
+              <button
+                type="submit"
+                className="w-full bg-[#8B8CF8] hover:bg-[#7879E8] text-white font-bold p-2.5 rounded-xl text-xs flex items-center justify-center gap-2 transition-colors"
+              >
+                <Plus className="w-4 h-4" /> Tambah Babu
+              </button>
+            </form>
+
+            <div className="space-y-2 pt-2">
+              {babuList.map((item) => (
+                <div key={item.id} className="bg-[#14161D] border border-[#292C36] p-2.5 rounded-xl flex items-center justify-between text-xs">
+                  <span className="font-bold text-[#F4F5F8]">{item.name}</span>
+                  <div className="flex items-center gap-3">
+                    <span className="text-[#8B8CF8] font-semibold">{item.task}</span>
+                    <button onClick={() => handleRemoveBabu(item.id)} className="text-rose-400 hover:text-rose-300">
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                </div>
+              ))}
+              {babuList.length === 0 && <p className="text-xs text-[#9CA3B4] text-center py-2 italic">Belum ada data list babu.</p>}
+            </div>
           </div>
         </div>
       )}
 
       {/* Tab 5: Rules & GB War */}
       {activeTab === 'war' && (
-        <div className="bg-[#181A22] border border-[#292C36] rounded-2xl p-6 space-y-6">
+        <div className="bg-[#181A22] border border-[#292C36] rounded-2xl p-6 space-y-6 shadow-lg">
           <h3 className="font-bold text-sm text-[#F4F5F8] flex items-center gap-2">
             <Swords className="w-4 h-4 text-amber-400" /> Atur Rules War & Link GB War
           </h3>
@@ -552,9 +654,9 @@ export const AdminMembersPage: React.FC = () => {
         </div>
       )}
 
-      {/* Tab 6: Pengaturan Branding & Sosmed */}
+      {/* Tab 6: Pengaturan Branding, Live Stream, Webhook & Sosmed */}
       {activeTab === 'settings' && (
-        <form onSubmit={handleSaveConfig} className="bg-[#181A22] border border-[#292C36] rounded-2xl p-6 space-y-6">
+        <form onSubmit={handleSaveConfig} className="bg-[#181A22] border border-[#292C36] rounded-2xl p-6 space-y-6 shadow-lg">
           <div className="space-y-4">
             <h3 className="font-bold text-sm text-[#F4F5F8] flex items-center gap-2">
               <ImageIcon className="w-4 h-4 text-[#8B8CF8]" /> Identitas Website & Logo Header
@@ -581,6 +683,57 @@ export const AdminMembersPage: React.FC = () => {
             </div>
           </div>
 
+          {/* Integrasi Stream, Donasi, & Discord Webhook */}
+          <div className="border-t border-[#292C36] pt-4 space-y-4">
+            <h3 className="font-bold text-sm text-[#F4F5F8] flex items-center gap-2">
+              <Radio className="w-4 h-4 text-rose-400" /> Integrasi Stream, Saweria & Discord Bot Webhook
+            </h3>
+
+            <div className="space-y-3">
+              <div className="space-y-1">
+                <label className="text-xs text-[#9CA3B4] flex items-center gap-1">
+                  <Share2 className="w-3.5 h-3.5 text-[#5865F2]" /> Discord Webhook URL (Posting Otomatis ke Discord)
+                </label>
+                <input
+                  type="url"
+                  value={discordWebhookUrl}
+                  onChange={(e) => setDiscordWebhookUrl(e.target.value)}
+                  placeholder="https://discord.com/api/webhooks/..."
+                  className="w-full bg-[#14161D] border border-[#292C36] rounded-xl px-3 py-2 text-xs text-[#F4F5F8] focus:outline-none focus:border-[#8B8CF8]"
+                />
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <label className="text-xs text-[#9CA3B4] flex items-center gap-1">
+                    <Radio className="w-3.5 h-3.5 text-rose-400" /> YouTube Live Stream Embed URL
+                  </label>
+                  <input
+                    type="url"
+                    value={liveStreamUrl}
+                    onChange={(e) => setLiveStreamUrl(e.target.value)}
+                    placeholder="https://www.youtube.com/embed/LIVE_ID"
+                    className="w-full bg-[#14161D] border border-[#292C36] rounded-xl px-3 py-2 text-xs text-[#F4F5F8] focus:outline-none focus:border-[#8B8CF8]"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-xs text-[#9CA3B4] flex items-center gap-1">
+                    <Heart className="w-3.5 h-3.5 text-amber-400" /> Link Donasi / Saweria
+                  </label>
+                  <input
+                    type="url"
+                    value={donateUrl}
+                    onChange={(e) => setDonateUrl(e.target.value)}
+                    placeholder="https://saweria.co/olexty"
+                    className="w-full bg-[#14161D] border border-[#292C36] rounded-xl px-3 py-2 text-xs text-[#F4F5F8] focus:outline-none focus:border-[#8B8CF8]"
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Pengumuman & Media Sosial */}
           <div className="border-t border-[#292C36] pt-4 space-y-4">
             <h3 className="font-bold text-sm text-[#F4F5F8] flex items-center gap-2">
               <Megaphone className="w-4 h-4 text-[#8B8CF8]" /> Pengumuman & Sosmed
@@ -590,7 +743,7 @@ export const AdminMembersPage: React.FC = () => {
                 rows={2}
                 value={announcementText}
                 onChange={(e) => setAnnouncementText(e.target.value)}
-                placeholder="Tulis pengumuman..."
+                placeholder="Tulis pengumuman resmi..."
                 className="w-full bg-[#14161D] border border-[#292C36] rounded-xl px-3 py-2 text-xs text-[#F4F5F8] focus:outline-none focus:border-[#8B8CF8]"
               />
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -598,14 +751,14 @@ export const AdminMembersPage: React.FC = () => {
                   type="url"
                   value={discordUrl}
                   onChange={(e) => setDiscordUrl(e.target.value)}
-                  placeholder="Link Discord"
+                  placeholder="Link Discord Server"
                   className="w-full bg-[#14161D] border border-[#292C36] rounded-xl px-3 py-2 text-xs text-[#F4F5F8] focus:outline-none focus:border-[#8B8CF8]"
                 />
                 <input
                   type="url"
                   value={waChannelUrl}
                   onChange={(e) => setWaChannelUrl(e.target.value)}
-                  placeholder="Link WA Channel"
+                  placeholder="Link Saluran WA"
                   className="w-full bg-[#14161D] border border-[#292C36] rounded-xl px-3 py-2 text-xs text-[#F4F5F8] focus:outline-none focus:border-[#8B8CF8]"
                 />
               </div>

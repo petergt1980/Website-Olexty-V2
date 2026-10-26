@@ -267,7 +267,8 @@ export const AdminDashboardPage: React.FC = () => {
                           className="bg-[#14161D] border border-[#292C36] rounded-lg px-2 py-1 text-xs text-[#F4F5F8] focus:outline-none focus:border-[#8B8CF8]"
                         >
                           <option value="member">Member</option>
-                          <option value="moderator">Moderator</option>
+                          <option value="Petinggi">Petinggi</option>
+                          <option value="Founder">Founder</option>
                           <option value="admin">Admin</option>
                         </select>
                       </td>

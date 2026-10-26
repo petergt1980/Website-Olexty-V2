@@ -1,19 +1,19 @@
-export type UserRole = 'member' | 'moderator' | 'admin';
+export type UserRole = 'admin' | 'moderator' | 'member';
 
 export interface UserProfile {
-  id?: string;
   uid: string;
-  email: string;
   displayName: string;
-  username: string;
+  username?: string;
+  email?: string;
   avatarUrl?: string;
   bio?: string;
-  role: UserRole;
+  role?: UserRole;
+  badge?: string;      // Atribut badge gelar
+  points?: number;     // Atribut poin check-in
+  lastCheckIn?: any;
   isSuspended?: boolean;
-  gameNick?: string;
-  gameId?: string;
-  gameRole?: string;
   createdAt?: any;
+  updatedAt?: any;
 }
 
 export interface Post {
@@ -21,41 +21,12 @@ export interface Post {
   userId: string;
   userName: string;
   userAvatar?: string;
+  userBadge?: string;
   content: string;
-  imageUrl?: string;
-  category: 'General' | 'Showcase' | 'Tutorial' | 'Discussion';
-  likes: string[];
-  commentCount: number;
-  createdAt: any;
-}
-
-export interface Comment {
-  id: string;
-  postId?: string;
-  userId: string;
-  userName: string;
-  userAvatar?: string;
-  content: string;
-  createdAt: any;
-}
-
-export interface NotificationItem {
-  id: string;
-  userId: string;
-  title: string;
-  content: string;
-  type: 'message' | 'like' | 'comment' | 'system';
-  isRead: boolean;
-  createdAt: any;
-  link?: string;
-}
-
-export interface ChatMessage {
-  id: string;
-  senderId: string;
-  receiverId: string;
-  text: string;
-  createdAt: any;
+  category?: string;
+  likes?: string[];
+  commentsCount?: number;
+  createdAt?: any;
 }
 
 export interface EventItem {
@@ -78,8 +49,8 @@ export interface ClipItem {
   title: string;
   videoUrl: string;
   game: string;
-  likes: string[];
-  createdAt: any;
+  likes?: string[];
+  createdAt?: any;
 }
 
 export interface SocialLinks {
@@ -92,4 +63,7 @@ export interface SocialLinks {
   tiktokUrl?: string;
   youtubeUrl?: string;
   announcementText?: string;
+  discordWebhookUrl?: string;
+  liveStreamUrl?: string;
+  donateUrl?: string;
 }
